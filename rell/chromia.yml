@@ -1,7 +1,7 @@
-# Just so we can build
 blockchains:
-  ai_library:
-    module: ai.inference
+  ai_inference:
+    type: library
+    module: lib.ai_inference
 
 libs:
   hybridcompute:

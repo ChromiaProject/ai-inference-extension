@@ -15,7 +15,7 @@ _build
 _doc
 logs
 
-rell/src/lib
+rell/src/lib/hybridcompute
 rell/build
 rell/logs
 
