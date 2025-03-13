@@ -1,13 +1,13 @@
 # AI inference extension
 
-    Extension for making inference with an AI model.
+Extension for making inference with an AI model.
 
 ## Registration
 
 ```shell
 pmc subnode-image add --name ai_inference_extension \
   --url registry.gitlab.com/chromaway/core/ai-inference-extension/chromaway/ai-inference-extension-chromia-subnode \
-  --digest sha256:xxxx \
+  --digest sha256:**************************************************************** \
   --image-description "Extension for making inference with an AI model" \
   -gtx net.postchain.hybridcompute.HybridComputeGTXModuleFactory
 ```
