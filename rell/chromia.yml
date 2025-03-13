@@ -1,0 +1,12 @@
+# Just so we can build
+blockchains:
+  ai_library:
+    module: ai.inference
+
+libs:
+  hybridcompute:
+    registry: https://gitlab.com/chromaway/postchain-chromia
+    path: chromia-infrastructure/rell/src/lib/hybridcompute
+    tagOrBranch: 3.27.0
+    rid: x"73543304BEF8A61992EED0A34A2C49B604F6CDFE883E76EF21CEEB3511084794"
+    insecure: false
