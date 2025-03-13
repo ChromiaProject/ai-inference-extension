@@ -193,6 +193,12 @@
                 <version>${rell.maven.plugin.version}</version>
                 <executions>
                     <execution>
+                        <id>rell install</id>
+                        <goals>
+                            <goal>rell-install</goal>
+                        </goals>
+                    </execution>
+                    <execution>
                         <id>rell compile</id>
                         <goals>
                             <goal>rell-compile</goal>
