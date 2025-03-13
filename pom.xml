@@ -29,7 +29,7 @@
         <postchain.chromia.version>3.27.0</postchain.chromia.version>
         <postchain.chromia.subnode.digest>sha256:d569449b16a4e0a2c79294f47b9ce81fda478ae76411fb5e5aa66d0c6e156c3d</postchain.chromia.subnode.digest>
         <rell.maven.plugin.version>0.12.2</rell.maven.plugin.version>
-        <djl.version>0.25.0</djl.version>
+        <djl.version>0.32.0</djl.version>
 
         <junit.version>5.9.1</junit.version>
         <log4j.version>2.23.1</log4j.version>
