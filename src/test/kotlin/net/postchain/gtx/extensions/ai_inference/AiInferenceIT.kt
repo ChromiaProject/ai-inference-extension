@@ -1,14 +1,14 @@
-package net.postchain.ai.inference
+package net.postchain.gtx.extensions.ai_inference
 
 import assertk.assertThat
 import assertk.assertions.isEqualTo
-import net.postchain.ai.inference.rell.lib.ai_inference.Request
-import net.postchain.ai.inference.rell.lib.ai_inference.Response
 import net.postchain.common.BlockchainRid
 import net.postchain.common.exception.UserMistake
 import net.postchain.gtv.GtvFactory.gtv
 import net.postchain.gtv.mapper.GtvObjectMapper
 import net.postchain.gtv.mapper.toObject
+import net.postchain.gtx.extensions.ai_inference.rell.lib.ai_inference.Request
+import net.postchain.gtx.extensions.ai_inference.rell.lib.ai_inference.Response
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertDoesNotThrow
 import org.junit.jupiter.api.assertThrows

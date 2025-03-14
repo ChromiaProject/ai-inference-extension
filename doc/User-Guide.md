@@ -13,7 +13,7 @@ config:
     modules:
       - "net.postchain.hybridcompute.HybridComputeGTXModuleFactory"
   hybridcompute:
-    engine: "net.postchain.ai.inference.AiInferenceComputeEngine"
+    engine: "net.postchain.gtx.extensions.ai_inference.AiInferenceComputeEngine"
     compute_timeout_seconds: 60 # Adjust this as needed
   ai_inference:
     model_url: "https://djl-misc.s3.amazonaws.com/test/models/gpt2/gpt2_pt.zip" # Specify model URL here
