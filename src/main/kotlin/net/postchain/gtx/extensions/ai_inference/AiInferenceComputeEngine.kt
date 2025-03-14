@@ -1,4 +1,4 @@
-package net.postchain.ai.inference
+package net.postchain.gtx.extensions.ai_inference
 
 import ai.djl.huggingface.tokenizers.Encoding
 import ai.djl.huggingface.tokenizers.HuggingFaceTokenizer
@@ -11,8 +11,6 @@ import ai.djl.repository.zoo.Criteria
 import ai.djl.repository.zoo.ZooModel
 import ai.djl.translate.DeferredTranslatorFactory
 import mu.KLogging
-import net.postchain.ai.inference.rell.lib.ai_inference.Request
-import net.postchain.ai.inference.rell.lib.ai_inference.Response
 import net.postchain.common.BlockchainRid
 import net.postchain.common.exception.UserMistake
 import net.postchain.gtv.Gtv
@@ -20,6 +18,8 @@ import net.postchain.gtv.mapper.DefaultValue
 import net.postchain.gtv.mapper.GtvObjectMapper
 import net.postchain.gtv.mapper.Name
 import net.postchain.gtv.mapper.toObject
+import net.postchain.gtx.extensions.ai_inference.rell.lib.ai_inference.Request
+import net.postchain.gtx.extensions.ai_inference.rell.lib.ai_inference.Response
 import net.postchain.hybridcompute.HybridComputeEngine
 import kotlin.time.measureTime
 import kotlin.time.measureTimedValue

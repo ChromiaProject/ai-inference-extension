@@ -1,4 +1,4 @@
-package net.postchain.ai.inference
+package net.postchain.gtx.extensions.ai_inference
 
 import ai.djl.huggingface.tokenizers.HuggingFaceTokenizer
 import ai.djl.inference.Predictor

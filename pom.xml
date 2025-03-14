@@ -195,7 +195,7 @@
                             <goal>rell-generate-client</goal>
                         </goals>
                         <configuration>
-                            <packageName>net.postchain.ai.inference.rell</packageName>
+                            <packageName>net.postchain.gtx.extensions.ai_inference.rell</packageName>
                             <mainModules>
                                 <mainModule>lib.ai_inference</mainModule>
                             </mainModules>
