@@ -12,27 +12,13 @@ import ai.djl.ndarray.types.Shape
 import mu.KLogging
 
 /**
- * `TextGenerator` is an LMSearch (language model search) which contains multiple
- * autoregressive search methods.
- *
- * It has a Predictor from NDList to CausalLMOutput, which is called inside an autoregressive
- * inference loop.
- *
  * Supports only "greedy" search.
  */
-class TextGeneratorVerifier(val predictor: Predictor<NDList, CausalLMOutput>?,
-                            val config: SearchConfig?,
+class TextGeneratorVerifier(val predictor: Predictor<NDList, CausalLMOutput>,
+                            val config: SearchConfig,
                             val tokenizer: HuggingFaceTokenizer) {
 
     companion object : KLogging()
-
-    /**
-     * Returns the value of the positionOffset.
-     *
-     * @return the value of positionOffset
-     */
-    var positionOffset: NDArray? = null
-        private set
 
     /**
      * Verifies the generated text by comparing model predictions with the actual tokens,
@@ -45,12 +31,10 @@ class TextGeneratorVerifier(val predictor: Predictor<NDList, CausalLMOutput>?,
      */
     fun verify(inputIds: NDArray, prompt: String): String? {
         // Prepare the attention mask and compute the positionOffset.
-        val attentionMask = prepareAttentionMaskOffset(inputIds, config)
-        val pastSeqLength = 0L
-        val modelInput = prepareInput(inputIds, attentionMask, pastSeqLength, 1)
-
+        val (attentionMask, positionOffset) = prepareAttentionMaskAndPositionOffset(inputIds, config)
+        val modelInput = prepareInput(inputIds, attentionMask, positionOffset, pastSeqLength = 0, repeat = 1)
         // Perform a single forward pass.
-        val modelOutput = predictor!!.predict(modelInput)
+        val modelOutput = predictor.predict(modelInput)
         // Get predicted token IDs by taking argMax over the vocabulary dimension.
         val predicted = modelOutput.logits.argMax(2)
 
@@ -58,11 +42,11 @@ class TextGeneratorVerifier(val predictor: Predictor<NDList, CausalLMOutput>?,
         val inputTokens = inputIds.toLongArray()
         val predictedTokens = predicted.toLongArray()
 
-        logger.debug("Input tokens: ${inputTokens.contentToString()}")
-        logger.debug("Predicted tokens: ${predictedTokens.contentToString()}")
+        logger.debug { "Input tokens: ${inputTokens.contentToString()}" }
+        logger.debug { "Predicted tokens: ${predictedTokens.contentToString()}" }
 
-        logger.debug("Input text: ${tokenizer.decode(inputTokens)}")
-        logger.debug("Predicted text: ${tokenizer.decode(predictedTokens)}")
+        logger.debug { "Input text: ${tokenizer.decode(inputTokens)}" }
+        logger.debug { "Predicted text: ${tokenizer.decode(predictedTokens)}" }
 
         // Get prompt tokens
         val promptTokens = tokenizer.encode(prompt).ids
@@ -94,7 +78,7 @@ class TextGeneratorVerifier(val predictor: Predictor<NDList, CausalLMOutput>?,
             }
         }
 
-        logger.debug("All predicted tokens match the expected next tokens")
+        logger.debug { "All predicted tokens match the expected next tokens" }
         return null
     }
 
@@ -106,13 +90,13 @@ class TextGeneratorVerifier(val predictor: Predictor<NDList, CausalLMOutput>?,
      * @return True if the predicted text length is correct
      */
     private fun verifyTextLength(predictedTokens: LongArray, promptLength: Int): Boolean {
-        val eosTokenId = config?.eosTokenId ?: -1L
-        val maxSequenceLength = config?.maxSeqLength ?: 60
+        val eosTokenId = config.eosTokenId
+        val maxSequenceLength = config.maxSeqLength
 
         if (eosTokenId != -1L) {
             for (i in promptLength until predictedTokens.size) {
                 if (predictedTokens[i] == eosTokenId) {
-                    logger.debug("EOS token found at position $i")
+                    logger.debug { "EOS token found at position $i" }
                     // Verify that generation stopped exactly at the EOS token
                     return i == predictedTokens.size - 1
                 }
@@ -122,16 +106,19 @@ class TextGeneratorVerifier(val predictor: Predictor<NDList, CausalLMOutput>?,
         val expectedLength = minOf(promptLength + maxSequenceLength, predictedTokens.size)
         val isMaxLengthReached = predictedTokens.size == expectedLength
 
-        logger.debug("Max sequence length: $maxSequenceLength, "
-                + "Expected length: $expectedLength, "
-                + "Actual length: ${predictedTokens.size}")
+        logger.debug {
+            "Max sequence length: $maxSequenceLength, Expected length: $expectedLength, Actual length: ${predictedTokens.size}"
+        }
         return isMaxLengthReached
     }
 
-    private fun prepareAttentionMaskOffset(inputIds: NDArray, config: SearchConfig?): NDArray {
-        // prepare attentionMask and positionOffset
-        // Used to initialize the search
-        val suffixPadding = config!!.isSuffixPadding
+    /**
+     * Prepare attentionMask and positionOffset.
+     *
+     * Used to initialize the search.
+     */
+    private fun prepareAttentionMaskAndPositionOffset(inputIds: NDArray, config: SearchConfig): Pair<NDArray, NDArray> {
+        val suffixPadding = config.isSuffixPadding
         val manager = inputIds.manager
         val numBatch = Math.toIntExact(inputIds.shape[0])
         val initSeqSize = Math.toIntExact(inputIds.shape[1])
@@ -161,13 +148,14 @@ class TextGeneratorVerifier(val predictor: Predictor<NDList, CausalLMOutput>?,
                 offset[i][0] = idx.toLong()
             }
         }
-        positionOffset = manager.create(offset)
-        return attentionMask
+        val positionOffset = manager.create(offset)
+        return attentionMask to positionOffset
     }
 
     private fun prepareInput(
             inputIds: NDArray,
             attentionMask: NDArray,
+            positionOffset: NDArray,
             pastSeqLength: Long,
             repeat: Int
     ): NDList {
@@ -182,7 +170,7 @@ class TextGeneratorVerifier(val predictor: Predictor<NDList, CausalLMOutput>?,
                         .expandDims(0)
                         .repeat(0, inputIds.shape[0])
 
-        val positionIdsShifted = positionIds.subi(positionOffset!!.repeat(0, repeat.toLong()))
+        val positionIdsShifted = positionIds.subi(positionOffset.repeat(0, repeat.toLong()))
         positionIds = positionIdsShifted.maximum(positionIdsShifted.zerosLike())
 
         return NDList(inputIds, positionIds, attentionMask)
