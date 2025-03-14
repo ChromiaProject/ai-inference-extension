@@ -10,3 +10,10 @@ libs:
     tagOrBranch: 3.27.1
     rid: x"567981E58074A540774653FDBC04D275E4FA03A32331BA7B33DF456236DD9314"
     insecure: false
+
+compile:
+  rellVersion: 0.14.5
+
+test:
+  modules:
+    - lib.ai_inference.test.ai_test

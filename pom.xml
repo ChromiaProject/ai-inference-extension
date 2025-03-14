@@ -207,6 +207,16 @@
                             <goal>rell-compile</goal>
                         </goals>
                     </execution>
+                    <execution>
+                        <id>rell-test</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>rell-integration-test</goal>
+                        </goals>
+                        <configuration>
+                            <skip>${skipTests}</skip>
+                        </configuration>
+                    </execution>
                 </executions>
             </plugin>
 

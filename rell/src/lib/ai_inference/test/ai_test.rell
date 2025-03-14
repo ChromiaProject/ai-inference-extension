@@ -1,0 +1,36 @@
+@test module;
+
+import ^^.*;
+import ^.helpers.*;
+import hc: ^^^.hybridcompute;
+import hch: ^^^.hybridcompute.test.helpers;
+
+function test_ai_inference_success() {
+    rell.test.tx().op(
+        submit_inference_request_op("one", "ABCD")
+    ).run();
+    assert_equals(fetch_inference_result("one"), (result=null, error=null));
+
+    rell.test.tx().op(
+        hch.request_taken_op("one")
+    ).run();
+    rell.test.tx().op(
+        hch.response_op("one", "ai_inference", response(prompt="ABCD", generated="ABCD 1234").to_gtv_pretty())
+    ).run();
+    assert_equals(fetch_inference_result("one"), (result="ABCD 1234", error=null));
+}
+
+function test_ai_inference_failure() {
+    rell.test.tx().op(
+        submit_inference_request_op("two", "ABCD")
+    ).run();
+    assert_equals(fetch_inference_result("two"), (result=null, error=null));
+
+    rell.test.tx().op(
+        hch.request_taken_op("two")
+    ).run();
+    rell.test.tx().op(
+        hch.failure_op("two", "ai_inference", "fel fel fel")
+    ).run();
+    assert_equals(fetch_inference_result("two"), (result=null, error="fel fel fel"));
+}

@@ -1,0 +1,9 @@
+module;
+
+import ^^.*;
+import hc: ^^^.hybridcompute;
+import ^^^.hybridcompute.test.helpers;
+
+operation submit_inference_request_op(id: text, prompt: text) {
+    submit_inference_request(id, prompt);
+}
