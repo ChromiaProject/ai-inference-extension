@@ -19,6 +19,7 @@ class AiInferenceIT {
         val engine = AiInferenceComputeEngine()
         val testConfig = AiInferenceConfig(
                 modelUrl = "https://djl-misc.s3.amazonaws.com/test/models/gpt2/gpt2_pt.zip",
+                tokenizerName = "gpt2",
                 maxSequenceLength = AiInferenceComputeEngine.DEFAULT_SEQUENCE_LENGTH.toLong(),
                 maxLength = AiInferenceComputeEngine.MAX_MAX_LENGTH.toLong()
         )
