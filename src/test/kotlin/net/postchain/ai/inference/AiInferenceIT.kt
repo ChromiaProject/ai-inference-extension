@@ -46,5 +46,7 @@ class AiInferenceIT {
             ))
             engine.validate(invalidOutput)
         }
+
+        engine.shutdown()
     }
 }

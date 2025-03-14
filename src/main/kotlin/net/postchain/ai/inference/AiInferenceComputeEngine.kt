@@ -6,7 +6,6 @@ import ai.djl.inference.Predictor
 import ai.djl.modality.nlp.generate.CausalLMOutput
 import ai.djl.modality.nlp.generate.SearchConfig
 import ai.djl.modality.nlp.generate.TextGenerator
-import ai.djl.ndarray.NDArray
 import ai.djl.ndarray.NDList
 import ai.djl.ndarray.NDManager
 import ai.djl.repository.zoo.Criteria
@@ -91,9 +90,9 @@ class AiInferenceComputeEngine : HybridComputeEngine {
 
     override fun compute(input: Gtv): Gtv {
         val request = input.toObject<Request>()
-        logger.info("Generating text for prompt <${request.prompt}>...")
+        logger.info("Generating text...")
         val (generatedText, duration) = measureTimedValue { generateText(request.prompt) }
-        logger.info("Generated in $duration <$generatedText>")
+        logger.info("Generated in $duration")
         return GtvObjectMapper.toGtvDictionary(Response(request.prompt, generatedText))
     }
 
@@ -104,14 +103,16 @@ class AiInferenceComputeEngine : HybridComputeEngine {
         val generator = TextGenerator(predictor, "greedy", searchConfig)
         val encoding: Encoding = tokenizer.encode(input)
         val inputIds: LongArray = encoding.ids
-        val inputIdArray: NDArray = manager.create(inputIds).expandDims(0)
-        val output: NDArray = generator.generate(inputIdArray)
-        return tokenizer.decode(output.toLongArray())
+        return manager.create(inputIds).expandDims(0).use { inputIdArray ->
+            generator.generate(inputIdArray).use { output ->
+                tokenizer.decode(output.toLongArray())
+            }
+        }
     }
 
     override fun validate(output: Gtv) {
         val response = output.toObject<Response>()
-        logger.info("Verifying generated text <${response.generated}> for prompt <${response.prompt}>..")
+        logger.info("Verifying generated text...")
         val (error, duration) = measureTimedValue { verifyTextGeneration(response.generated, response.prompt) }
         logger.info("Verified in $duration $error")
         if (error != null) {
@@ -132,14 +133,19 @@ class AiInferenceComputeEngine : HybridComputeEngine {
         val verifier = TextGeneratorVerifier(predictor, searchConfig, tokenizer)
         val encoding: Encoding = tokenizer.encode(generatedText)
         val outputIds: LongArray = encoding.ids
-        val outputIdArray: NDArray = manager.create(outputIds).expandDims(0)
-        return verifier.verify(outputIdArray, prompt)
+        return manager.create(outputIds).expandDims(0).use { outputIdArray ->
+            verifier.verify(outputIdArray, prompt)
+        }
     }
 
     override fun shutdown() {
-        tokenizer.close()
-        manager.close()
-        predictor.close()
-        model.close()
+        logger.info("Shutting down...")
+        val duration = measureTime {
+            if (::tokenizer.isInitialized) tokenizer.close()
+            if (::manager.isInitialized) manager.close()
+            if (::predictor.isInitialized) predictor.close()
+            if (::model.isInitialized) model.close()
+        }
+        logger.info("Shutdown in $duration")
     }
 }
