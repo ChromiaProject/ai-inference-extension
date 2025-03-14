@@ -7,7 +7,6 @@ import ai.djl.modality.nlp.generate.CausalLMOutput
 import ai.djl.modality.nlp.generate.SearchConfig
 import ai.djl.modality.nlp.generate.TextGenerator
 import ai.djl.ndarray.NDList
-import ai.djl.ndarray.NDManager
 import ai.djl.repository.zoo.Criteria
 import ai.djl.repository.zoo.ZooModel
 import ai.djl.translate.DeferredTranslatorFactory
@@ -52,7 +51,6 @@ class AiInferenceComputeEngine : HybridComputeEngine {
 
     lateinit var model: ZooModel<NDList, CausalLMOutput>
     lateinit var predictor: Predictor<NDList, CausalLMOutput>
-    lateinit var manager: NDManager
     lateinit var tokenizer: HuggingFaceTokenizer
     lateinit var searchConfig: SearchConfig
 
@@ -83,7 +81,6 @@ class AiInferenceComputeEngine : HybridComputeEngine {
 
             model = criteria.loadModel()
             predictor = model.newPredictor()
-            manager = model.ndManager.newSubManager()
             tokenizer = HuggingFaceTokenizer.builder()
                     .optTokenizerName(config.tokenizerName)
                     .optMaxLength(config.maxLength.toInt())
@@ -109,10 +106,10 @@ class AiInferenceComputeEngine : HybridComputeEngine {
         val generator = TextGenerator(predictor, "greedy", searchConfig)
         val encoding: Encoding = tokenizer.encode(input)
         val inputIds: LongArray = encoding.ids
-        return manager.create(inputIds).expandDims(0).use { inputIdArray ->
-            generator.generate(inputIdArray).use { output ->
-                tokenizer.decode(output.toLongArray())
-            }
+        return model.ndManager.newSubManager().use { manager ->
+            val inputIdArray = manager.create(inputIds).expandDims(0)
+            val output = generator.generate(inputIdArray)
+            tokenizer.decode(output.toLongArray())
         }
     }
 
@@ -139,7 +136,8 @@ class AiInferenceComputeEngine : HybridComputeEngine {
         val verifier = TextGeneratorVerifier(predictor, searchConfig, tokenizer)
         val encoding: Encoding = tokenizer.encode(generatedText)
         val outputIds: LongArray = encoding.ids
-        return manager.create(outputIds).expandDims(0).use { outputIdArray ->
+        return model.ndManager.newSubManager().use { manager ->
+            val outputIdArray = manager.create(outputIds).expandDims(0)
             verifier.verify(outputIdArray, prompt)
         }
     }
@@ -148,7 +146,6 @@ class AiInferenceComputeEngine : HybridComputeEngine {
         logger.info("Shutting down...")
         val duration = measureTime {
             if (::tokenizer.isInitialized) tokenizer.close()
-            if (::manager.isInitialized) manager.close()
             if (::predictor.isInitialized) predictor.close()
             if (::model.isInitialized) model.close()
         }
