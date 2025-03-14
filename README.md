@@ -14,7 +14,4 @@ pmc subnode-image add --name ai_inference_extension \
 
 This will generate a proposal which need to be voted on.
 
-
-[Documentation for node providers](doc/Node-Configuration.md)
-
 [Documentation for dApp developers](doc/User-Guide.md)
