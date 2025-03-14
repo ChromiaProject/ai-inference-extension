@@ -29,6 +29,9 @@ data class AiInferenceConfig(
         @Name("model_url")
         val modelUrl: String,
 
+        @Name("tokenizer_name")
+        val tokenizerName: String,
+
         @Name("max_sequence_length")
         @DefaultValue(defaultLong = AiInferenceComputeEngine.DEFAULT_SEQUENCE_LENGTH.toLong())
         val maxSequenceLength: Long,
@@ -59,6 +62,9 @@ class AiInferenceComputeEngine : HybridComputeEngine {
         if (config.modelUrl.isBlank()) {
             throw UserMistake("$NAME configuration invalid: no model_url specified")
         }
+        if (config.tokenizerName.isBlank()) {
+            throw UserMistake("$NAME configuration invalid: no tokenizer_name specified")
+        }
         if (config.maxSequenceLength < 1 || config.maxSequenceLength > Integer.MAX_VALUE) {
             throw UserMistake("$NAME configuration invalid: max_sequence_length must be between 1 and ${Integer.MAX_VALUE}")
         }
@@ -79,7 +85,7 @@ class AiInferenceComputeEngine : HybridComputeEngine {
             predictor = model.newPredictor()
             manager = model.ndManager.newSubManager()
             tokenizer = HuggingFaceTokenizer.builder()
-                    .optTokenizerName("gpt2")
+                    .optTokenizerName(config.tokenizerName)
                     .optMaxLength(config.maxLength.toInt())
                     .build()
             searchConfig = SearchConfig()

@@ -16,7 +16,8 @@ config:
     engine: "net.postchain.ai.inference.AiInferenceComputeEngine"
     compute_timeout_seconds: 60 # Adjust this as needed
   ai_inference:
-    model_url: "https://djl-misc.s3.amazonaws.com/test/models/gpt2/gpt2_pt.zip" # Specify model here
+    model_url: "https://djl-misc.s3.amazonaws.com/test/models/gpt2/gpt2_pt.zip" # Specify model URL here
+    tokenizer_name: gpt2 # Specify tokenizer name here
     max_sequence_length: 60 # Adjust this as needed
     max_length: 512 # Adjust this as needed
 ```
