@@ -37,7 +37,7 @@
         <gitlab.password>${CI_REGISTRY_PASSWORD}</gitlab.password>
         <gitlab.registry>registry.gitlab.com/chromaway/core/ai-inference-extension</gitlab.registry>
         <docker.cache>/tmp/docker-cache</docker.cache>
-        <image.platforms>linux/amd64,linux/arm64</image.platforms>
+        <image.platforms>linux/amd64</image.platforms>
         <image.name>chromaway/ai-inference-extension-chromia-subnode</image.name>
     </properties>
 
@@ -56,6 +56,13 @@
                 <version>${kotlin.version}</version>
                 <scope>import</scope>
                 <type>pom</type>
+            </dependency>
+            <dependency>
+                <groupId>ai.djl</groupId>
+                <artifactId>bom</artifactId>
+                <version>${djl.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -81,24 +88,32 @@
         <dependency>
             <groupId>ai.djl</groupId>
             <artifactId>api</artifactId>
-            <version>${djl.version}</version>
         </dependency>
         <dependency>
             <groupId>ai.djl.huggingface</groupId>
             <artifactId>tokenizers</artifactId>
-            <version>${djl.version}</version>
         </dependency>
         <dependency>
             <groupId>ai.djl.pytorch</groupId>
             <artifactId>pytorch-model-zoo</artifactId>
-            <version>${djl.version}</version>
         </dependency>
         <dependency>
             <groupId>ai.djl.pytorch</groupId>
             <artifactId>pytorch-engine</artifactId>
-            <version>${djl.version}</version>
+            <scope>runtime</scope>
         </dependency>
-        
+        <dependency>
+            <groupId>ai.djl.pytorch</groupId>
+            <artifactId>pytorch-native-cpu</artifactId>
+            <classifier>linux-x86_64</classifier>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>ai.djl.pytorch</groupId>
+            <artifactId>pytorch-jni</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
         <!-- logging -->
         <dependency>
             <groupId>io.github.microutils</groupId>
@@ -240,7 +255,9 @@
                 <configuration>
                     <allowInsecureRegistries>false</allowInsecureRegistries>
                     <from>
-                        <image>registry.gitlab.com/chromaway/postchain-chromia/chromaway/chromia-subnode:${postchain.chromia.version}@${postchain.chromia.subnode.digest}</image>
+                        <image>
+                            registry.gitlab.com/chromaway/postchain-chromia/chromaway/chromia-subnode:${postchain.chromia.version}@${postchain.chromia.subnode.digest}
+                        </image>
                     </from>
                     <to>
                         <image>${image.name}</image>
@@ -275,35 +292,6 @@
 
     <profiles>
         <profile>
-            <id>docker-arm</id>
-            <activation>
-                <os>
-                    <family>mac</family>
-                    <arch>aarch64</arch>
-                </os>
-            </activation>
-            <build>
-                <pluginManagement>
-                    <plugins>
-                        <plugin>
-                            <groupId>com.google.cloud.tools</groupId>
-                            <artifactId>jib-maven-plugin</artifactId>
-                            <configuration>
-                                <from>
-                                    <platforms>
-                                        <platform>
-                                            <os>linux</os>
-                                            <architecture>arm64</architecture>
-                                        </platform>
-                                    </platforms>
-                                </from>
-                            </configuration>
-                        </plugin>
-                    </plugins>
-                </pluginManagement>
-            </build>
-        </profile>
-        <profile>
             <id>docker-push</id>
             <build>
                 <plugins>
@@ -321,10 +309,6 @@
                                         <platforms>
                                             <platform>
                                                 <architecture>amd64</architecture>
-                                                <os>linux</os>
-                                            </platform>
-                                            <platform>
-                                                <architecture>arm64</architecture>
                                                 <os>linux</os>
                                             </platform>
                                         </platforms>
