@@ -27,8 +27,10 @@
 
         <postchain.version>3.28.7</postchain.version>
         <postchain.chromia.version>3.27.1</postchain.chromia.version>
-        <postchain.chromia.subnode.digest>sha256:595dcbee50c318e7173fc332816454b9201431c7d355a80057400319ee92bc96</postchain.chromia.subnode.digest>
+        <rell.version>0.14.5</rell.version>
         <rell.maven.plugin.version>0.14.1</rell.maven.plugin.version>
+        <eif.version>0.12.0</eif.version>
+
         <djl.version>0.32.0</djl.version>
 
         <!--suppress UnresolvedMavenProperty -->
@@ -119,6 +121,27 @@
             <groupId>io.github.microutils</groupId>
             <artifactId>kotlin-logging-jvm</artifactId>
         </dependency>
+
+        <!-- Docker image dependencies -->
+        <dependency>
+            <groupId>net.postchain</groupId>
+            <artifactId>postchain-server-cli</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>net.postchain</groupId>
+            <artifactId>postchain-web-static</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>net.postchain.rell</groupId>
+            <artifactId>rell-gtx</artifactId>
+            <version>${rell.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>net.postchain</groupId>
+            <artifactId>postchain-eif-core</artifactId>
+            <version>${eif.version}</version>
+        </dependency>
+
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-slf4j-impl</artifactId>
@@ -256,7 +279,7 @@
                     <allowInsecureRegistries>false</allowInsecureRegistries>
                     <from>
                         <image>
-                            registry.gitlab.com/chromaway/postchain-chromia/chromaway/chromia-subnode:${postchain.chromia.version}@${postchain.chromia.subnode.digest}
+                            registry.gitlab.com/chromaway/core-tools/chromia-images/java21-postgres16-ubuntu:1.0.0@sha256:850a1f04c8f276df281b79246ffedeb70a6d78781675d160ac5d45f50c81c117
                         </image>
                     </from>
                     <to>
@@ -264,11 +287,21 @@
                     </to>
                     <container>
                         <appRoot>/opt/chromaway/postchain</appRoot>
-                        <entrypoint>INHERIT</entrypoint>
+                        <workingDirectory>/opt/chromaway/postchain</workingDirectory>
+                        <entrypoint>/bin/bash</entrypoint>
+                        <args>entrypoint.sh</args>
+                        <environment>
+                            <POSTCHAIN_RUNNING_IN_CONTAINER>true</POSTCHAIN_RUNNING_IN_CONTAINER>
+                            <LOG4J_CONFIGURATION_FILE>/opt/chromaway/postchain/log4j2.yml</LOG4J_CONFIGURATION_FILE>
+                            <POSTCHAIN_DIR>/opt/chromaway/postchain</POSTCHAIN_DIR>
+                            <POSTGRES_DB>postchain</POSTGRES_DB>
+                            <POSTGRES_USER>postchain</POSTGRES_USER>
+                            <POSTGRES_PASSWORD>postchain</POSTGRES_PASSWORD>
+                            <POSTGRES_INITDB_ARGS>"--lc-collate=C.UTF-8 --lc-ctype=C.UTF-8 --encoding=UTF-8"</POSTGRES_INITDB_ARGS>
+                        </environment>
                         <creationTime>${git.commit.time}</creationTime>
                         <filesModificationTime>${git.commit.time}</filesModificationTime>
                     </container>
-                    <containerizingMode>packaged</containerizingMode>
                 </configuration>
                 <executions>
                     <execution>
@@ -344,6 +377,16 @@
             <id>postchain-chromia</id>
             <name>Postchain Chromia GitLab Registry</name>
             <url>https://gitlab.com/api/v4/projects/33481005/packages/maven</url>
+        </repository>
+        <repository>
+            <id>rell</id>
+            <name>Rell Registry</name>
+            <url>https://gitlab.com/api/v4/projects/32802097/packages/maven</url>
+        </repository>
+        <repository>
+            <id>postchain-eif</id>
+            <name>Postchain EIF Gtx module Registry</name>
+            <url>https://gitlab.com/api/v4/projects/36768178/packages/maven</url>
         </repository>
     </repositories>
 
