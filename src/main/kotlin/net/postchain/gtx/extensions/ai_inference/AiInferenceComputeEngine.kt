@@ -1,5 +1,6 @@
 package net.postchain.gtx.extensions.ai_inference
 
+import ai.djl.Device
 import ai.djl.huggingface.tokenizers.Encoding
 import ai.djl.huggingface.tokenizers.HuggingFaceTokenizer
 import ai.djl.inference.Predictor
@@ -73,10 +74,13 @@ class AiInferenceComputeEngine : HybridComputeEngine {
         logger.info("Initializing engine...")
         try {
             val duration = measureTime {
+                System.setProperty("ai.djl.offline", "true")
+
                 val criteria: Criteria<NDList, CausalLMOutput> = Criteria.builder()
                         .setTypes(NDList::class.java, CausalLMOutput::class.java)
                         .optModelUrls(config.modelUrl)
                         .optEngine("PyTorch")
+                        .optDevice(Device.cpu())
                         .optTranslatorFactory(DeferredTranslatorFactory())
                         .build()
 
