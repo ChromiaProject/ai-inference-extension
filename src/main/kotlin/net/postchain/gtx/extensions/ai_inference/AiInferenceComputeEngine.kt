@@ -37,7 +37,7 @@ data class AiInferenceConfig(
         val maxSequenceLength: Long,
 
         @Name("max_length")
-        @DefaultValue(defaultLong = AiInferenceComputeEngine.MAX_MAX_LENGTH.toLong())
+        @DefaultValue(defaultLong = AiInferenceComputeEngine.MAX_LENGTH.toLong())
         val maxLength: Long,
 )
 
@@ -45,7 +45,7 @@ class AiInferenceComputeEngine : HybridComputeEngine {
     companion object : KLogging() {
         const val NAME = "ai_inference"
         const val DEFAULT_SEQUENCE_LENGTH = 60
-        const val MAX_MAX_LENGTH = 512
+        const val MAX_LENGTH = 512
     }
 
     override val name = NAME
@@ -67,8 +67,8 @@ class AiInferenceComputeEngine : HybridComputeEngine {
         if (config.maxSequenceLength < 1 || config.maxSequenceLength > Integer.MAX_VALUE) {
             throw UserMistake("$NAME configuration invalid: max_sequence_length must be between 1 and ${Integer.MAX_VALUE}")
         }
-        if (config.maxLength < 1 || config.maxLength > MAX_MAX_LENGTH) {
-            throw UserMistake("$NAME configuration invalid: max_length must be between 1 and $MAX_MAX_LENGTH")
+        if (config.maxLength < 1 || config.maxLength > MAX_LENGTH) {
+            throw UserMistake("$NAME configuration invalid: max_length must be between 1 and $MAX_LENGTH")
         }
 
         logger.info("Initializing engine...")
