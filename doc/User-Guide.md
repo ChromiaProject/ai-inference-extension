@@ -2,6 +2,10 @@
 
 This extension uses the Hybrid Compute framework.
 
+## Custom subnode image
+
+Ensure you pick the AI extension image when leasing your container.
+
 ## Blockchain configuration
 
 You will need to enable the Hybrid Compute framework, configure it to use the AI inference engine provided by this 
@@ -36,12 +40,54 @@ libs:
     insecure: false
   ai_inference:
     registry: https://gitlab.com/chromaway/core/ai-inference-extension 
-    path: src/lib/ai_inference
-    tagOrBranch: 0.1.0
+    path: rell/src/lib/ai_inference
+    tagOrBranch: 0.1.1
     rid: x"92CDF1CE0AD1B95B6F4CF1AFB457587578E237362F3A2D9E64D7E93D4F57DF1C"
     insecure: false
 ```
 
-## Custom subnode image
+Import the module:
 
-Ensure you pick the AI extension image when leasing your container.
+```
+import ai: lib.ai_inference;
+```
+
+Use these two functions from your Rell code:
+
+```
+/**
+ * Submits an inference request.
+ * 
+ * @param id A unique identifier for the inference request.
+ * @param prompt The prompt to generate text for.
+ */
+function submit_inference_request(id: text, prompt: text)
+```
+
+```
+/**
+ * Fetches the result of a previously submitted inference request.
+ *
+ * If the result is not yet ready, `(null, null)` will be returned. 
+ * 
+ * @param id The identifier of the inference request for which the result is being fetched.
+ * @return A tuple containing:
+ *         - result (optional): The generated text, or null if the result is not ready yet or an error occurred.
+ *         - error (optional): An error message if the inference failed, or null if no error occurred.
+ */
+```
+
+Minimal example:
+
+```
+module;
+
+import ai: lib.ai_inference;
+
+// TODO should have authentication for this operation
+operation submit_inference_request(id: text, prompt: text) {
+    ai.submit_inference_request(id, prompt);
+}
+
+query fetch_inference_result(id: text): (result: text?, error: text?) = ai.fetch_inference_result(id);
+```
