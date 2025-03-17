@@ -71,24 +71,29 @@ class AiInferenceComputeEngine : HybridComputeEngine {
         }
 
         logger.info("Initializing engine...")
-        val duration = measureTime {
-            val criteria: Criteria<NDList, CausalLMOutput> = Criteria.builder()
-                    .setTypes(NDList::class.java, CausalLMOutput::class.java)
-                    .optModelUrls(config.modelUrl)
-                    .optEngine("PyTorch")
-                    .optTranslatorFactory(DeferredTranslatorFactory())
-                    .build()
+        try {
+            val duration = measureTime {
+                val criteria: Criteria<NDList, CausalLMOutput> = Criteria.builder()
+                        .setTypes(NDList::class.java, CausalLMOutput::class.java)
+                        .optModelUrls(config.modelUrl)
+                        .optEngine("PyTorch")
+                        .optTranslatorFactory(DeferredTranslatorFactory())
+                        .build()
 
-            model = criteria.loadModel()
-            predictor = model.newPredictor()
-            tokenizer = HuggingFaceTokenizer.builder()
-                    .optTokenizerName(config.tokenizerName)
-                    .optMaxLength(config.maxLength.toInt())
-                    .build()
-            searchConfig = SearchConfig()
-            searchConfig.maxSeqLength = config.maxSequenceLength.toInt()
+                model = criteria.loadModel()
+                predictor = model.newPredictor()
+                tokenizer = HuggingFaceTokenizer.builder()
+                        .optTokenizerName(config.tokenizerName)
+                        .optMaxLength(config.maxLength.toInt())
+                        .build()
+                searchConfig = SearchConfig()
+                searchConfig.maxSeqLength = config.maxSequenceLength.toInt()
+            }
+            logger.info("Initialized engine in $duration")
+        } catch (e: Exception) {
+            logger.error("Failed to initialize engine: $e", e)
+            throw UserMistake("Failed to initialize engine")
         }
-        logger.info("Initialized engine in $duration")
     }
 
     override fun compute(input: Gtv): Gtv {
