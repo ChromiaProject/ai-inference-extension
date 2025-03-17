@@ -48,13 +48,13 @@ libs:
 
 Import the module:
 
-```
+```rell
 import ai: lib.ai_inference;
 ```
 
 Use these two functions from your Rell code:
 
-```
+```rell
 /**
  * Submits an inference request.
  * 
@@ -64,7 +64,7 @@ Use these two functions from your Rell code:
 function submit_inference_request(id: text, prompt: text)
 ```
 
-```
+```rell
 /**
  * Fetches the result of a previously submitted inference request.
  *
@@ -75,11 +75,12 @@ function submit_inference_request(id: text, prompt: text)
  *         - result (optional): The generated text, or null if the result is not ready yet or an error occurred.
  *         - error (optional): An error message if the inference failed, or null if no error occurred.
  */
+function fetch_inference_result(id: text): (result: text?, error: text?)
 ```
 
 Minimal example:
 
-```
+```rell
 module;
 
 import ai: lib.ai_inference;
