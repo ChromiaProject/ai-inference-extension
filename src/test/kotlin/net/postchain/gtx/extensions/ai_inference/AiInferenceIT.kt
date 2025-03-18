@@ -28,6 +28,8 @@ class AiInferenceIT {
                 BlockchainRid.ZERO_RID
         )
 
+        engine.load()
+
         val prompt = "Hello, how are you?"
         val input = GtvObjectMapper.toGtvDictionary(Request(prompt))
         val output = engine.compute(input)
