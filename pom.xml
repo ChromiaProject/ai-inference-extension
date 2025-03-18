@@ -298,7 +298,7 @@
                             <POSTGRES_INITDB_ARGS>--lc-collate=C.UTF-8 --lc-ctype=C.UTF-8 --encoding=UTF-8</POSTGRES_INITDB_ARGS>
                             <PGDATA>/var/lib/postgresql/data</PGDATA>
                             <DJL_CACHE_DIR>/tmp/djl</DJL_CACHE_DIR>
-                            <HF_HUB_CACHE>/tmp/huggingface</HF_HUB_CACHE>
+                            <HF_HUB_CACHE>/tmp</HF_HUB_CACHE>
                         </environment>
                         <creationTime>${git.commit.time}</creationTime>
                         <filesModificationTime>${git.commit.time}</filesModificationTime>
