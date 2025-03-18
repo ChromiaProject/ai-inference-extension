@@ -50,13 +50,15 @@ class AiInferenceComputeEngine : HybridComputeEngine {
 
     override val name = NAME
 
+    lateinit var config: AiInferenceConfig
+
     lateinit var model: ZooModel<NDList, CausalLMOutput>
     lateinit var predictor: Predictor<NDList, CausalLMOutput>
     lateinit var tokenizer: HuggingFaceTokenizer
     lateinit var searchConfig: SearchConfig
 
     override fun init(blockchainConfig: Gtv, blockchainRID: BlockchainRid) {
-        val config = blockchainConfig.asDict()[NAME]?.toObject<AiInferenceConfig>()
+        config = blockchainConfig.asDict()[NAME]?.toObject<AiInferenceConfig>()
                 ?: throw UserMistake("$NAME configuration not found")
         if (config.modelUrl.isBlank()) {
             throw UserMistake("$NAME configuration invalid: no model_url specified")
@@ -70,34 +72,31 @@ class AiInferenceComputeEngine : HybridComputeEngine {
         if (config.maxLength < 1 || config.maxLength > MAX_LENGTH) {
             throw UserMistake("$NAME configuration invalid: max_length must be between 1 and $MAX_LENGTH")
         }
+    }
 
+    override fun load() {
         logger.info("Initializing engine...")
-        try {
-            val duration = measureTime {
-                System.setProperty("ai.djl.offline", "true")
+        val duration = measureTime {
+            System.setProperty("ai.djl.offline", "true")
 
-                val criteria: Criteria<NDList, CausalLMOutput> = Criteria.builder()
-                        .setTypes(NDList::class.java, CausalLMOutput::class.java)
-                        .optModelUrls(config.modelUrl)
-                        .optEngine("PyTorch")
-                        .optDevice(Device.cpu())
-                        .optTranslatorFactory(DeferredTranslatorFactory())
-                        .build()
+            val criteria: Criteria<NDList, CausalLMOutput> = Criteria.builder()
+                    .setTypes(NDList::class.java, CausalLMOutput::class.java)
+                    .optModelUrls(config.modelUrl)
+                    .optEngine("PyTorch")
+                    .optDevice(Device.cpu())
+                    .optTranslatorFactory(DeferredTranslatorFactory())
+                    .build()
 
-                model = criteria.loadModel()
-                predictor = model.newPredictor()
-                tokenizer = HuggingFaceTokenizer.builder()
-                        .optTokenizerName(config.tokenizerName)
-                        .optMaxLength(config.maxLength.toInt())
-                        .build()
-                searchConfig = SearchConfig()
-                searchConfig.maxSeqLength = config.maxSequenceLength.toInt()
-            }
-            logger.info("Initialized engine in $duration")
-        } catch (e: Exception) {
-            logger.error("Failed to initialize engine: $e", e)
-            throw UserMistake("Failed to initialize engine")
+            model = criteria.loadModel()
+            predictor = model.newPredictor()
+            tokenizer = HuggingFaceTokenizer.builder()
+                    .optTokenizerName(config.tokenizerName)
+                    .optMaxLength(config.maxLength.toInt())
+                    .build()
+            searchConfig = SearchConfig()
+            searchConfig.maxSeqLength = config.maxSequenceLength.toInt()
         }
+        logger.info("Initialized engine in $duration")
     }
 
     override fun compute(input: Gtv): Gtv {
