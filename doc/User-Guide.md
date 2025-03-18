@@ -41,8 +41,8 @@ libs:
   ai_inference:
     registry: https://gitlab.com/chromaway/core/ai-inference-extension 
     path: rell/src/lib/ai_inference
-    tagOrBranch: 0.1.1
-    rid: x"92CDF1CE0AD1B95B6F4CF1AFB457587578E237362F3A2D9E64D7E93D4F57DF1C"
+    tagOrBranch: 0.1.2
+    rid: x"96A40E708B700F51402408D94E500572949C0554410FB8D9F47E00849C5F6937"
     insecure: false
 ```
 

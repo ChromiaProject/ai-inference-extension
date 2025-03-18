@@ -142,21 +142,19 @@
             <version>${eif.version}</version>
         </dependency>
 
+        <!-- Docker image and test dependencies -->
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-slf4j-impl</artifactId>
-            <scope>test</scope>
         </dependency>
         <!-- For Log4j2/YAML configuration -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.dataformat</groupId>
             <artifactId>jackson-dataformat-yaml</artifactId>
-            <scope>test</scope>
         </dependency>
 
         <!-- Test -->
@@ -297,11 +295,13 @@
                             <POSTGRES_DB>postchain</POSTGRES_DB>
                             <POSTGRES_USER>postchain</POSTGRES_USER>
                             <POSTGRES_PASSWORD>postchain</POSTGRES_PASSWORD>
-                            <POSTGRES_INITDB_ARGS>"--lc-collate=C.UTF-8 --lc-ctype=C.UTF-8 --encoding=UTF-8"</POSTGRES_INITDB_ARGS>
+                            <POSTGRES_INITDB_ARGS>--lc-collate=C.UTF-8 --lc-ctype=C.UTF-8 --encoding=UTF-8</POSTGRES_INITDB_ARGS>
+                            <PGDATA>/var/lib/postgresql/data</PGDATA>
                         </environment>
                         <creationTime>${git.commit.time}</creationTime>
                         <filesModificationTime>${git.commit.time}</filesModificationTime>
                     </container>
+                    <containerizingMode>packaged</containerizingMode>
                 </configuration>
                 <executions>
                     <execution>

@@ -13,7 +13,7 @@ if [ "$(id -u)" = '0' ]; then
   exit 1
 fi
 
-trap 'echo "Shutting down..." ; kill ${POSTCHAIN_PID} ; pg_ctl stop -m smart' TERM INT
+trap 'echo "Shutting down..." ; kill ${POSTCHAIN_PID} ; ${PG_BIN_16}/pg_ctl stop -m smart' TERM INT
 
 echo "Configuring and starting Postgres"
 bash postgres-entrypoint.sh postgres
