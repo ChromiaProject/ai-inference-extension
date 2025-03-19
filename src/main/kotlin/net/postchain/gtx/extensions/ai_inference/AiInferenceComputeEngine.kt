@@ -3,7 +3,6 @@ package net.postchain.gtx.extensions.ai_inference
 import ai.djl.Device
 import ai.djl.huggingface.tokenizers.Encoding
 import ai.djl.huggingface.tokenizers.HuggingFaceTokenizer
-import ai.djl.inference.Predictor
 import ai.djl.modality.nlp.generate.CausalLMOutput
 import ai.djl.modality.nlp.generate.SearchConfig
 import ai.djl.modality.nlp.generate.TextGenerator
@@ -53,7 +52,6 @@ class AiInferenceComputeEngine : HybridComputeEngine {
     lateinit var config: AiInferenceConfig
 
     lateinit var model: ZooModel<NDList, CausalLMOutput>
-    lateinit var predictor: Predictor<NDList, CausalLMOutput>
     lateinit var tokenizer: HuggingFaceTokenizer
     lateinit var searchConfig: SearchConfig
 
@@ -88,7 +86,6 @@ class AiInferenceComputeEngine : HybridComputeEngine {
                     .build()
 
             model = criteria.loadModel()
-            predictor = model.newPredictor()
             tokenizer = HuggingFaceTokenizer.builder()
                     .optTokenizerName(config.tokenizerName)
                     .optMaxLength(config.maxLength.toInt())
@@ -111,13 +108,15 @@ class AiInferenceComputeEngine : HybridComputeEngine {
      * Generates a text string using PyTorch with greedy search.
      */
     fun generateText(input: String): String {
-        val generator = TextGenerator(predictor, "greedy", searchConfig)
-        val encoding: Encoding = tokenizer.encode(input)
-        val inputIds: LongArray = encoding.ids
-        return model.ndManager.newSubManager().use { manager ->
-            val inputIdArray = manager.create(inputIds).expandDims(0)
-            val output = generator.generate(inputIdArray)
-            tokenizer.decode(output.toLongArray())
+        model.newPredictor().use { predictor ->
+            val generator = TextGenerator(predictor, "greedy", searchConfig)
+            val encoding: Encoding = tokenizer.encode(input)
+            val inputIds: LongArray = encoding.ids
+            return model.ndManager.newSubManager().use { manager ->
+                val inputIdArray = manager.create(inputIds).expandDims(0)
+                val output = generator.generate(inputIdArray)
+                tokenizer.decode(output.toLongArray())
+            }
         }
     }
 
@@ -141,12 +140,14 @@ class AiInferenceComputeEngine : HybridComputeEngine {
      *      an error message if not
      */
     fun verifyTextGeneration(generatedText: String, prompt: String): String? {
-        val verifier = TextGeneratorVerifier(predictor, searchConfig, tokenizer)
-        val encoding: Encoding = tokenizer.encode(generatedText)
-        val outputIds: LongArray = encoding.ids
-        return model.ndManager.newSubManager().use { manager ->
-            val outputIdArray = manager.create(outputIds).expandDims(0)
-            verifier.verify(outputIdArray, prompt)
+        model.newPredictor().use { predictor ->
+            val verifier = TextGeneratorVerifier(predictor, searchConfig, tokenizer)
+            val encoding: Encoding = tokenizer.encode(generatedText)
+            val outputIds: LongArray = encoding.ids
+            return model.ndManager.newSubManager().use { manager ->
+                val outputIdArray = manager.create(outputIds).expandDims(0)
+                verifier.verify(outputIdArray, prompt)
+            }
         }
     }
 
@@ -154,7 +155,6 @@ class AiInferenceComputeEngine : HybridComputeEngine {
         logger.info("Shutting down...")
         val duration = measureTime {
             if (::tokenizer.isInitialized) tokenizer.close()
-            if (::predictor.isInitialized) predictor.close()
             if (::model.isInitialized) model.close()
         }
         logger.info("Shutdown in $duration")
