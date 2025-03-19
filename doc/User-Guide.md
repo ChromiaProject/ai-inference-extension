@@ -13,9 +13,11 @@ extension, set appropriate timeout for inference computations and configure the 
 
 ```yaml
 config:
+  sync_ext:
+    - "net.postchain.hybridcompute.HybridComputeSynchronizationInfrastructureExtension"
   gtx:
     modules:
-      - "net.postchain.hybridcompute.HybridComputeGTXModuleFactory"
+      - "net.postchain.hybridcompute.HybridComputeGTXModule"
   hybridcompute:
     engine: "net.postchain.gtx.extensions.ai_inference.AiInferenceComputeEngine"
     compute_timeout_seconds: 60 # Adjust this as needed
@@ -35,13 +37,13 @@ libs:
   hybridcompute:
     registry: https://gitlab.com/chromaway/postchain-chromia
     path: chromia-infrastructure/rell/src/lib/hybridcompute
-    tagOrBranch: 3.27.2
+    tagOrBranch: 3.27.3
     rid: x"1511636CB7C619EED7EB33D9B159F02B6905C17A03EC83413D70B267256306D4"
     insecure: false
   ai_inference:
     registry: https://gitlab.com/chromaway/core/ai-inference-extension 
     path: rell/src/lib/ai_inference
-    tagOrBranch: 0.1.3
+    tagOrBranch: 0.1.5
     rid: x"96A40E708B700F51402408D94E500572949C0554410FB8D9F47E00849C5F6937"
     insecure: false
 ```
