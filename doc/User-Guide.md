@@ -20,7 +20,8 @@ config:
       - "net.postchain.hybridcompute.HybridComputeGTXModule"
   hybridcompute:
     engine: "net.postchain.gtx.extensions.ai_inference.AiInferenceComputeEngine"
-    compute_timeout_seconds: 60 # Adjust this as needed
+    load_timeout_seconds: 600 # Adjust this as needed
+    compute_timeout_seconds: 600 # Adjust this as needed
   ai_inference:
     model_url: "https://djl-misc.s3.amazonaws.com/test/models/gpt2/gpt2_pt.zip" # Specify model URL here
     tokenizer_name: gpt2 # Specify tokenizer name here
@@ -37,7 +38,7 @@ libs:
   hybridcompute:
     registry: https://gitlab.com/chromaway/postchain-chromia
     path: chromia-infrastructure/rell/src/lib/hybridcompute
-    tagOrBranch: 3.27.3
+    tagOrBranch: 3.27.4
     rid: x"1511636CB7C619EED7EB33D9B159F02B6905C17A03EC83413D70B267256306D4"
     insecure: false
   ai_inference:
