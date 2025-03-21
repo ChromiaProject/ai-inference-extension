@@ -38,14 +38,14 @@ libs:
   hybridcompute:
     registry: https://gitlab.com/chromaway/postchain-chromia
     path: chromia-infrastructure/rell/src/lib/hybridcompute
-    tagOrBranch: 3.27.4
-    rid: x"1511636CB7C619EED7EB33D9B159F02B6905C17A03EC83413D70B267256306D4"
+    tagOrBranch: 3.27.5
+    rid: x"FBDB9DF68FF14B6E47DAA1B6FBDC9370AA0106AF57D378D6FA2270E4B2BB69CE"
     insecure: false
   ai_inference:
     registry: https://gitlab.com/chromaway/core/ai-inference-extension 
     path: rell/src/lib/ai_inference
-    tagOrBranch: 0.1.5
-    rid: x"96A40E708B700F51402408D94E500572949C0554410FB8D9F47E00849C5F6937"
+    tagOrBranch: 0.1.7
+    rid: x"AA53CAB29510CB6CA0E27018497217A349BB15D68105797416F6485126670CD6"
     insecure: false
 ```
 
@@ -68,17 +68,27 @@ function submit_inference_request(id: text, prompt: text)
 ```
 
 ```rell
+struct inference_result {
+    /** The result of the inference, or null if an error occurred. */
+    result: text?;
+
+    /** An error message if the inference failed, or null if no error occurred. */
+    error: text?;
+
+    /** RID of the transaction where the result was reported. */
+    tx_rid: byte_array;
+
+    /** Index of the operation where the result was reported. */
+    op_index: integer;
+}
+
 /**
  * Fetches the result of a previously submitted inference request.
  *
- * If the result is not yet ready, `(null, null)` will be returned. 
- * 
  * @param id The identifier of the inference request for which the result is being fetched.
- * @return A tuple containing:
- *         - result (optional): The generated text, or null if the result is not ready yet or an error occurred.
- *         - error (optional): An error message if the inference failed, or null if no error occurred.
+ * @return The result, or `null` if not ready yet
  */
-function fetch_inference_result(id: text): (result: text?, error: text?)
+function fetch_inference_result(id: text): inference_result?
 ```
 
 Minimal example:
@@ -93,5 +103,5 @@ operation submit_inference_request(id: text, prompt: text) {
     ai.submit_inference_request(id, prompt);
 }
 
-query fetch_inference_result(id: text): (result: text?, error: text?) = ai.fetch_inference_result(id);
+query fetch_inference_result(id: text): ai.inference_result = ai.fetch_inference_result(id);
 ```

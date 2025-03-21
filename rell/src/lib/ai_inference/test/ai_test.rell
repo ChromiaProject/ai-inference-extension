@@ -9,7 +9,7 @@ function test_ai_inference_success() {
     rell.test.tx().op(
         submit_inference_request_op("one", "ABCD")
     ).run();
-    assert_equals(fetch_inference_result("one"), (result=null, error=null));
+    assert_null(fetch_inference_result("one"));
 
     rell.test.tx().op(
         hch.request_taken_op("one")
@@ -17,14 +17,16 @@ function test_ai_inference_success() {
     rell.test.tx().op(
         hch.response_op("one", "ai_inference", response(prompt="ABCD", generated="ABCD 1234").to_gtv_pretty())
     ).run();
-    assert_equals(fetch_inference_result("one"), (result="ABCD 1234", error=null));
+    assert_equals(fetch_inference_result("one"), inference_result(result="ABCD 1234", error=null,
+        tx_rid=transaction @ { } (@omit @sort_desc .rowid, .tx_rid) limit 1, op_index=0));
+
 }
 
 function test_ai_inference_failure() {
     rell.test.tx().op(
         submit_inference_request_op("two", "ABCD")
     ).run();
-    assert_equals(fetch_inference_result("two"), (result=null, error=null));
+    assert_null(fetch_inference_result("two"));
 
     rell.test.tx().op(
         hch.request_taken_op("two")
@@ -32,5 +34,7 @@ function test_ai_inference_failure() {
     rell.test.tx().op(
         hch.failure_op("two", "ai_inference", "fel fel fel")
     ).run();
-    assert_equals(fetch_inference_result("two"), (result=null, error="fel fel fel"));
+    assert_equals(fetch_inference_result("two"), inference_result(result=null, error="fel fel fel",
+        tx_rid=transaction @ { } (@omit @sort_desc .rowid, .tx_rid) limit 1, op_index=0));
+
 }
