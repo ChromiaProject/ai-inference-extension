@@ -20,13 +20,13 @@ config:
       - "net.postchain.hybridcompute.HybridComputeGTXModule"
   hybridcompute:
     engine: "net.postchain.gtx.extensions.ai_inference.AiInferenceComputeEngine"
-    load_timeout_seconds: 600 # Adjust this as needed
-    compute_timeout_seconds: 600 # Adjust this as needed
+    load_timeout_seconds: 600 # Timeout in seconds for initial model loading 
+    compute_timeout_seconds: 600 # Timeout in seconds for each inference
   ai_inference:
     model_url: "https://djl-misc.s3.amazonaws.com/test/models/gpt2/gpt2_pt.zip" # Specify model URL here
     tokenizer_name: gpt2 # Specify tokenizer name here
-    max_sequence_length: 60 # Adjust this as needed
-    max_length: 512 # Adjust this as needed
+    max_sequence_length: 60 # Max sequence length, see https://javadoc.io/static/ai.djl/api/0.32.0/ai/djl/modality/nlp/generate/SearchConfig.html#setMaxSeqLength(int)
+    max_length: 512 # The length to truncate and/or pad sequences to, see https://javadoc.io/static/ai.djl.huggingface/tokenizers/0.32.0/ai/djl/huggingface/tokenizers/HuggingFaceTokenizer.Builder.html#optMaxLength(int)
 ```
 
 ## Rell
