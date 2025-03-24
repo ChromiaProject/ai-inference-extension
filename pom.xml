@@ -119,12 +119,6 @@
         </dependency>
         <dependency>
             <groupId>ai.djl.pytorch</groupId>
-            <artifactId>pytorch-native-cpu</artifactId>
-            <classifier>linux-x86_64</classifier>
-            <scope>runtime</scope>
-        </dependency>
-        <dependency>
-            <groupId>ai.djl.pytorch</groupId>
             <artifactId>pytorch-jni</artifactId>
             <scope>runtime</scope>
         </dependency>
@@ -311,7 +305,7 @@
                                     <classifier>linux-x86_64</classifier>
                                     <overWrite>false</overWrite>
                                     <includes>pytorch/**</includes>
-                                    <outputDirectory>${project.build.directory}/djl.ai-native/pytorch/2.5.1-20241113-cpu-linux-x86_64</outputDirectory>
+                                    <outputDirectory>${project.build.directory}/djl.ai-native/pytorch/2.5.1-cpu-linux-x86_64</outputDirectory>
                                     <fileMappers>
                                         <org.codehaus.plexus.components.io.filemappers.FlattenFileMapper/>
                                     </fileMappers>
@@ -321,7 +315,7 @@
                                     <artifactId>pytorch-jni</artifactId>
                                     <overWrite>false</overWrite>
                                     <includes>jnilib/linux-x86_64/cpu/libdjl_torch.so</includes>
-                                    <outputDirectory>${project.build.directory}/djl.ai-native/pytorch/2.5.1-20241113-cpu-linux-x86_64</outputDirectory>
+                                    <outputDirectory>${project.build.directory}/djl.ai-native/pytorch/2.5.1-cpu-linux-x86_64</outputDirectory>
                                     <fileMappers>
                                         <org.codehaus.plexus.components.io.filemappers.FlattenFileMapper/>
                                         <org.codehaus.plexus.components.io.filemappers.RegExpFileMapper>
