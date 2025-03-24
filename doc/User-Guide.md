@@ -44,7 +44,7 @@ libs:
   ai_inference:
     registry: https://gitlab.com/chromaway/core/ai-inference-extension 
     path: rell/src/lib/ai_inference
-    tagOrBranch: 0.1.7
+    tagOrBranch: 0.1.8
     rid: x"AA53CAB29510CB6CA0E27018497217A349BB15D68105797416F6485126670CD6"
     insecure: false
 ```
@@ -103,5 +103,5 @@ operation submit_inference_request(id: text, prompt: text) {
     ai.submit_inference_request(id, prompt);
 }
 
-query fetch_inference_result(id: text): ai.inference_result = ai.fetch_inference_result(id);
+query fetch_inference_result(id: text): ai.inference_result? = ai.fetch_inference_result(id);
 ```
