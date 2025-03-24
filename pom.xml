@@ -294,6 +294,59 @@
                 </executions>
             </plugin>
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>unpack</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>unpack</goal>
+                        </goals>
+                        <configuration>
+                            <artifactItems>
+                                <artifactItem>
+                                    <groupId>ai.djl.pytorch</groupId>
+                                    <artifactId>pytorch-native-cpu</artifactId>
+                                    <classifier>linux-x86_64</classifier>
+                                    <overWrite>false</overWrite>
+                                    <includes>pytorch/**</includes>
+                                    <outputDirectory>${project.build.directory}/djl.ai-native/pytorch/2.5.1-20241113-cpu-linux-x86_64</outputDirectory>
+                                    <fileMappers>
+                                        <org.codehaus.plexus.components.io.filemappers.FlattenFileMapper/>
+                                    </fileMappers>
+                                </artifactItem>
+                                <artifactItem>
+                                    <groupId>ai.djl.pytorch</groupId>
+                                    <artifactId>pytorch-jni</artifactId>
+                                    <overWrite>false</overWrite>
+                                    <includes>jnilib/linux-x86_64/cpu/libdjl_torch.so</includes>
+                                    <outputDirectory>${project.build.directory}/djl.ai-native/pytorch/2.5.1-20241113-cpu-linux-x86_64</outputDirectory>
+                                    <fileMappers>
+                                        <org.codehaus.plexus.components.io.filemappers.FlattenFileMapper/>
+                                        <org.codehaus.plexus.components.io.filemappers.RegExpFileMapper>
+                                            <pattern>libdjl_torch.so$</pattern>
+                                            <replacement>${djl.version}-libdjl_torch.so</replacement>
+                                        </org.codehaus.plexus.components.io.filemappers.RegExpFileMapper>
+                                    </fileMappers>
+                                </artifactItem>
+                                <artifactItem>
+                                    <groupId>ai.djl.huggingface</groupId>
+                                    <artifactId>tokenizers</artifactId>
+                                    <overWrite>false</overWrite>
+                                    <includes>native/lib/linux-x86_64/cpu/libtokenizers.so</includes>
+                                    <outputDirectory>${project.build.directory}/djl.ai-native/tokenizers/0.21.0-0.32.0-cpu-linux-x86_64</outputDirectory>
+                                    <fileMappers>
+                                        <org.codehaus.plexus.components.io.filemappers.FlattenFileMapper/>
+                                    </fileMappers>
+                                </artifactItem>
+                            </artifactItems>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
                 <groupId>com.google.cloud.tools</groupId>
                 <artifactId>jib-maven-plugin</artifactId>
                 <version>3.4.4</version>
@@ -307,6 +360,18 @@
                     <to>
                         <image>${image.name}</image>
                     </to>
+                    <extraDirectories>
+                        <paths>
+                            <path>
+                                <from>${project.basedir}/src/main/jib</from>
+                                <into>/</into>
+                            </path>
+                            <path>
+                                <from>${project.build.directory}/djl.ai-native</from>
+                                <into>/opt/djl.ai/engine</into>
+                            </path>
+                        </paths>
+                    </extraDirectories>
                     <container>
                         <appRoot>/opt/chromaway/postchain</appRoot>
                         <workingDirectory>/opt/chromaway/postchain</workingDirectory>
@@ -321,6 +386,7 @@
                             <POSTGRES_PASSWORD>postchain</POSTGRES_PASSWORD>
                             <POSTGRES_INITDB_ARGS>--lc-collate=C.UTF-8 --lc-ctype=C.UTF-8 --encoding=UTF-8</POSTGRES_INITDB_ARGS>
                             <PGDATA>/var/lib/postgresql/data</PGDATA>
+                            <ENGINE_CACHE_DIR>/opt/djl.ai/engine</ENGINE_CACHE_DIR>
                             <DJL_CACHE_DIR>/tmp/djl.ai</DJL_CACHE_DIR>
                             <HF_HOME>/tmp/huggingface</HF_HOME>
                         </environment>
