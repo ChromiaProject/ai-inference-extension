@@ -66,6 +66,19 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>testcontainers-bom</artifactId>
+                <version>1.20.3</version>
+                <scope>import</scope>
+                <type>pom</type>
+            </dependency>
+            <!-- Needed for testcontainers -->
+            <dependency>
+                <groupId>commons-codec</groupId>
+                <artifactId>commons-codec</artifactId>
+                <version>1.16.1</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -166,6 +179,17 @@
         <dependency>
             <groupId>net.postchain</groupId>
             <artifactId>postchain-devtools</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- Needed for testcontainers -->
+        <dependency>
+            <groupId>commons-codec</groupId>
+            <artifactId>commons-codec</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -315,7 +339,7 @@
                     </execution>
                     <execution>
                         <id>docker-build</id>
-                        <phase>install</phase>
+                        <phase>pre-integration-test</phase>
                         <goals>
                             <goal>dockerBuild</goal>
                         </goals>
