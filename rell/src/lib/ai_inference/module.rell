@@ -26,21 +26,41 @@ function submit_inference_request(id: text, prompt: text) {
     hc.submit_compute_request(id, type, request(prompt).to_gtv_pretty());
 }
 
+struct inference_result {
+    /** The result of the inference, or null if an error occurred. */
+    result: text?;
+
+    /** An error message if the inference failed, or null if no error occurred. */
+    error: text?;
+
+    /** RID of the transaction where the result was reported. */
+    tx_rid: byte_array;
+
+    /** Index of the operation where the result was reported. */
+    op_index: integer;
+}
+
 /**
  * Fetches the result of a previously submitted inference request.
  *
- * If the result is not yet ready, `(null, null)` will be returned.
- * 
  * @param id The identifier of the inference request for which the result is being fetched.
- * @return A tuple containing:
- *         - result (optional): The generated text, or null if the result is not ready yet or an error occurred.
- *         - error (optional): An error message if the inference failed, or null if no error occurred.
+ * @return The result, or `null` if not ready yet
  */
-function fetch_inference_result(id: text): (result: text?, error: text?) {
-    val (result, error) = hc.fetch_compute_result(id);
-    if (result != null) {
-        return (result = response.from_gtv_pretty(result).generated, error = null);
-    } else {
-        return (result = null, error = error);
-    }
+function fetch_inference_result(id: text): inference_result? {
+    val result = hc.fetch_compute_result(id);
+    if (result == null) return null;
+    return if (result.result != null)
+        inference_result(
+            result = response.from_gtv_pretty(result.result).generated,
+            error = null,
+            tx_rid = result.tx_rid,
+            op_index = result.op_index
+        )
+     else
+        inference_result(
+            result = null,
+            error = result.error,
+            tx_rid = result.tx_rid,
+            op_index = result.op_index
+        );
 }
