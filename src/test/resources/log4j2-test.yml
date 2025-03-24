@@ -2,10 +2,6 @@ Configuration:
 
   Properties:
     Property:
-      - name: logs
-        value: "logs"
-      - name: logfile
-        value: "test"
       - name: logpattern
         value: "%-5level %d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %c{1} --%notEmpty{ [%notEmpty{node=%.-8X{node.pubkey}}%notEmpty{, bc-rid=%.-2X{blockchainRID}:%.4X{blockchainRID}}%notEmpty{, chain-id=%X{chainIID}}]:} %msg%n"
 
@@ -15,11 +11,6 @@ Configuration:
         target: SYSTEM_OUT
         PatternLayout:
           pattern: ${logpattern}
-    File:
-      - name: FileAppender
-        fileName: "${logs}/${logfile}.log"
-        PatternLayout:
-          Pattern: ${logpattern}
 
   Loggers:
 
@@ -27,20 +18,17 @@ Configuration:
       level: warn
       AppenderRef:
         - ref: ConsoleAppender
-        - ref: FileAppender
 
     Logger:
 
       - name: ai.djl
-        level: info
+        level: debug
         additivity: false
         AppenderRef:
           - ref: ConsoleAppender
-          - ref: FileAppender
 
       - name: net.postchain
         level: debug
         additivity: false
         AppenderRef:
           - ref: ConsoleAppender
-          - ref: FileAppender
