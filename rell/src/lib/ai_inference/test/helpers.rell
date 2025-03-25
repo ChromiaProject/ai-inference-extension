@@ -7,3 +7,16 @@ import ^^^.hybridcompute.test.helpers;
 operation submit_inference_request_op(id: text, prompt: text) {
     submit_inference_request(id, prompt);
 }
+
+object result {
+    mutable id: text = "";
+    mutable result: text = "";
+    mutable error: text = "";
+}
+
+@extend(on_inference_result)
+function (id: text, inference_result) {
+    result.id = id;
+    result.result = inference_result.result ?: "";
+    result.error = inference_result.error ?: "";
+}
