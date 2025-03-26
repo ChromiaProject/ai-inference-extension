@@ -16,6 +16,25 @@ query bogus(request): response = response(prompt = request.prompt, generated = "
 
 val type = "ai_inference";
 
+@extend(hc.on_compute_result)
+function (id: text, result: hc.compute_result) {
+    on_inference_result(id, if (result.result != null)
+        inference_result(
+            result = response.from_gtv_pretty(result.result).generated,
+            error = null,
+            tx_rid = result.tx_rid,
+            op_index = result.op_index
+        )
+     else
+        inference_result(
+            result = null,
+            error = result.error,
+            tx_rid = result.tx_rid,
+            op_index = result.op_index
+        )
+    );
+}
+
 /**
  * Submits an inference request.
  * 
@@ -64,3 +83,11 @@ function fetch_inference_result(id: text): inference_result? {
             op_index = result.op_index
         );
 }
+
+/**
+ * Called when an inference is finished, successfully or failed.
+ *
+ * @param id The identifier of the inference request
+ * @param inference_result The result
+ */
+@extendable function on_inference_result(id: text, inference_result) {}
