@@ -55,6 +55,8 @@ class AiInferenceComputeEngine : HybridComputeEngine {
     lateinit var tokenizer: HuggingFaceTokenizer
     lateinit var searchConfig: SearchConfig
 
+    internal var offline = true
+
     override fun init(blockchainConfig: Gtv, blockchainRID: BlockchainRid) {
         config = blockchainConfig.asDict()[NAME]?.toObject<AiInferenceConfig>()
                 ?: throw UserMistake("$NAME configuration not found")
@@ -75,7 +77,7 @@ class AiInferenceComputeEngine : HybridComputeEngine {
     override fun load() {
         logger.info("Initializing engine...")
         val duration = measureTime {
-            System.setProperty("ai.djl.offline", "true")
+            System.setProperty("ai.djl.offline", offline.toString())
 
             val criteria: Criteria<NDList, CausalLMOutput> = Criteria.builder()
                     .setTypes(NDList::class.java, CausalLMOutput::class.java)
@@ -99,23 +101,29 @@ class AiInferenceComputeEngine : HybridComputeEngine {
     override fun compute(input: Gtv): Gtv {
         val request = input.toObject<Request>()
         logger.info("Generating text...")
-        val (generatedText, duration) = measureTimedValue { generateText(request.prompt) }
+        val (response, duration) = measureTimedValue { generateText(request) }
         logger.info("Generated in $duration")
-        return GtvObjectMapper.toGtvDictionary(Response(request.prompt, generatedText))
+        return GtvObjectMapper.toGtvDictionary(response)
     }
 
     /**
      * Generates a text string using PyTorch with greedy search.
      */
-    fun generateText(input: String): String {
+    fun generateText(input: Request): Response {
         model.newPredictor().use { predictor ->
             val generator = TextGenerator(predictor, "greedy", searchConfig)
-            val encoding: Encoding = tokenizer.encode(input)
+            val encoding: Encoding = tokenizer.encode(input.prompt)
             val inputIds: LongArray = encoding.ids
             return model.ndManager.newSubManager().use { manager ->
                 val inputIdArray = manager.create(inputIds).expandDims(0)
                 val output = generator.generate(inputIdArray)
-                tokenizer.decode(output.toLongArray())
+                val outputIds = output.toLongArray()
+                val generatedText = tokenizer.decode(outputIds)
+                Response(
+                        promptLength = inputIds.size.toLong(),
+                        tokens = outputIds.toList(),
+                        text = generatedText
+                )
             }
         }
     }
@@ -123,7 +131,7 @@ class AiInferenceComputeEngine : HybridComputeEngine {
     override fun validate(output: Gtv) {
         val response = output.toObject<Response>()
         logger.info("Verifying generated text...")
-        val (error, duration) = measureTimedValue { verifyTextGeneration(response.generated, response.prompt) }
+        val (error, duration) = measureTimedValue { verifyTextGeneration(response) }
         logger.info("Verified in $duration $error")
         if (error != null) {
             throw UserMistake(error)
@@ -134,19 +142,16 @@ class AiInferenceComputeEngine : HybridComputeEngine {
      * Verifies a generated text by re-encoding it into token IDs and verifying via the verifier,
      * excluding the prompt tokens from verification.
      *
-     * @param generatedText The complete generated text (including prompt)
-     * @param prompt The prompt text that was used to generate the text
      * @return `null` if the model predictions match the input tokens (excluding prompt tokens),
      *      an error message if not
      */
-    fun verifyTextGeneration(generatedText: String, prompt: String): String? {
+    fun verifyTextGeneration(response: Response): String? {
         model.newPredictor().use { predictor ->
             val verifier = TextGeneratorVerifier(predictor, searchConfig, tokenizer)
-            val encoding: Encoding = tokenizer.encode(generatedText)
-            val outputIds: LongArray = encoding.ids
             return model.ndManager.newSubManager().use { manager ->
+                val outputIds = response.tokens.toLongArray()
                 val outputIdArray = manager.create(outputIds).expandDims(0)
-                verifier.verify(outputIdArray, prompt)
+                verifier.verify(outputIdArray, response.promptLength.toInt())
             }
         }
     }
