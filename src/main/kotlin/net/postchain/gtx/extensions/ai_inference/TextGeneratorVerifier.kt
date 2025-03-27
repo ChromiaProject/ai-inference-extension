@@ -25,11 +25,11 @@ class TextGeneratorVerifier(val predictor: Predictor<NDList, CausalLMOutput>,
      * excluding the prompt tokens from verification.
      *
      * @param inputIds The NDArray containing the token IDs to verify
-     * @param prompt The prompt text that was used to generate the text
+     * @param promptLength Length of the prompt text that was used to generate the text
      * @return `null` if the model predictions match the input tokens (excluding prompt tokens),
      *      an error message if not
      */
-    fun verify(inputIds: NDArray, prompt: String): String? {
+    fun verify(inputIds: NDArray, promptLength: Int): String? {
         // Prepare the attention mask and compute the positionOffset.
         val (attentionMask, positionOffset) = prepareAttentionMaskAndPositionOffset(inputIds, config)
         val modelInput = prepareInput(inputIds, attentionMask, positionOffset, pastSeqLength = 0, repeat = 1)
@@ -45,12 +45,8 @@ class TextGeneratorVerifier(val predictor: Predictor<NDList, CausalLMOutput>,
         logger.debug { "Input tokens: ${inputTokens.contentToString()}" }
         logger.debug { "Predicted tokens: ${predictedTokens.contentToString()}" }
 
-        logger.debug { "Input text: ${tokenizer.decode(inputTokens)}" }
-        logger.debug { "Predicted text: ${tokenizer.decode(predictedTokens)}" }
-
-        // Get prompt tokens
-        val promptTokens = tokenizer.encode(prompt).ids
-        val promptLength = promptTokens.size
+        logger.debug { "Input text: <${tokenizer.decode(inputTokens)}>" }
+        logger.debug { "Predicted text: <${tokenizer.decode(predictedTokens)}>" }
 
         // If the input is shorter than the prompt (shouldn't happen normally), return false
         if (inputTokens.size <= promptLength) {
@@ -68,7 +64,7 @@ class TextGeneratorVerifier(val predictor: Predictor<NDList, CausalLMOutput>,
             return "Input and predicted tokens sizes do not match"
         }
 
-        // For a sequence [A, B, C], the model predicts [B, C, EOS]
+        // For a sequence [A, B, C], the model predicts [B, C, X] 
         // So we need to compare input[i] with predicted[i-1]
         // We start from the prompt length to skip the prompt tokens
 
