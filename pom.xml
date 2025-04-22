@@ -348,7 +348,7 @@
                     <allowInsecureRegistries>false</allowInsecureRegistries>
                     <from>
                         <image>
-                            registry.gitlab.com/chromaway/core-tools/chromia-images/java21-postgres16-ubuntu:1.0.0@sha256:850a1f04c8f276df281b79246ffedeb70a6d78781675d160ac5d45f50c81c117
+                            registry.gitlab.com/chromaway/core-tools/chromia-images/java21-postgres16-ubuntu:1.0.1@sha256:100d498d697b9c065674c533d3a3eece1647c4a26463c506afd118b27b401284
                         </image>
                     </from>
                     <to>
