@@ -9,7 +9,7 @@ Ensure you pick the AI extension image when leasing your container.
 ## Blockchain configuration
 
 You will need to enable the Hybrid Compute framework, configure it to use the AI inference engine provided by this 
-extension, set appropriate timeout for inference computations and configure the model to use for inference. 
+extension, set the appropriate timeout for inference computations and configure the model to use for inference. 
 
 ```yaml
 config:
@@ -20,13 +20,9 @@ config:
       - "net.postchain.hybridcompute.HybridComputeGTXModule"
   hybridcompute:
     engine: "net.postchain.gtx.extensions.ai_inference.AiInferenceComputeEngine"
-    load_timeout_seconds: 600 # Timeout in seconds for initial model loading 
-    compute_timeout_seconds: 600 # Timeout in seconds for each inference
   ai_inference:
-    model_url: "https://djl-misc.s3.amazonaws.com/test/models/gpt2/gpt2_pt.zip" # Specify model URL here
-    tokenizer_name: gpt2 # Specify tokenizer name here
-    max_sequence_length: 60 # Max sequence length, see https://javadoc.io/static/ai.djl/api/0.32.0/ai/djl/modality/nlp/generate/SearchConfig.html#setMaxSeqLength(int)
-    max_length: 512 # The length to truncate and/or pad sequences to, see https://javadoc.io/static/ai.djl.huggingface/tokenizers/0.32.0/ai/djl/huggingface/tokenizers/HuggingFaceTokenizer.Builder.html#optMaxLength(int)
+    model: "your-model-name" # Specify model name here
+    timeout_seconds: 600 # Timeout in seconds for each inference and validation  
 ```
 
 ## Rell
@@ -38,14 +34,14 @@ libs:
   hybridcompute:
     registry: https://gitlab.com/chromaway/postchain-chromia
     path: chromia-infrastructure/rell/src/lib/hybridcompute
-    tagOrBranch: 3.27.6
-    rid: x"DF9EF3C9333D497F501B2D230CA0B9FD12F5288FA4E1D9F5DDBE916506543887"
+    tagOrBranch: 3.30.6
+    rid: x"7F4921AB6D1D7FB4CE1B415A011CB8327C39D9F6BFDA95FCDCF31954BECCA4EB"
     insecure: false
   ai_inference:
     registry: https://gitlab.com/chromaway/core/ai-inference-extension 
     path: rell/src/lib/ai_inference
-    tagOrBranch: 0.1.11
-    rid: x"A6FEA479A5BF5A2302931CFF037E70A3BEBB7316617DBB44E331FEB09AA0CB86"
+    tagOrBranch: ${VERSION}
+    rid: ${RID}
     insecure: false
 ```
 
@@ -55,7 +51,7 @@ Import the module:
 import ai: lib.ai_inference;
 ```
 
-Submit a request with this function:
+Submit a simple inference request with this function:
 
 ```rell
 /**
@@ -67,7 +63,19 @@ Submit a request with this function:
 function submit_inference_request(id: text, prompt: text)
 ```
 
-Fetch result with this function:
+Or submit a chat inference request with this function:
+
+```rell
+/**
+ * Submits an chat inference request.
+ *
+ * @param id A unique identifier for the inference request.
+ * @param messages A list of messages comprising the conversation so far.
+ */
+function submit_chat_inference_request(id: text, messages: list<chat_message>)
+```
+
+Fetch the result with this function:
 
 ```rell
 struct inference_result {
@@ -115,6 +123,11 @@ import ai: lib.ai_inference;
 // TODO should have authentication for this operation
 operation submit_inference_request(id: text, prompt: text) {
     ai.submit_inference_request(id, prompt);
+}
+
+// TODO should have authentication for this operation
+operation submit_chat_inference_request(id: text, prompt: text) {
+    ai.submit_chat_inference_request(id, [chat_message(role="user", message="prompt")]);
 }
 
 query fetch_inference_result(id: text): ai.inference_result? = ai.fetch_inference_result(id);

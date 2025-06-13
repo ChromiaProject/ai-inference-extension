@@ -25,13 +25,12 @@
         <kotlin.compiler.jvmTarget>21</kotlin.compiler.jvmTarget>
         <kotlin.code.style>obsolete</kotlin.code.style> <!-- Kotlin obsolete IntelliJ IDEA codestyle -->
 
-        <postchain.version>3.28.9</postchain.version>
-        <postchain.chromia.version>3.27.6</postchain.chromia.version>
-        <rell.version>0.14.5</rell.version>
-        <rell.maven.plugin.version>0.14.1</rell.maven.plugin.version>
-        <eif.version>0.13.1</eif.version>
+        <postchain.version>3.37.4</postchain.version>
+        <postchain.chromia.version>3.30.6</postchain.chromia.version>
 
-        <djl.version>0.32.0</djl.version>
+        <rell.maven.plugin.version>0.14.1</rell.maven.plugin.version>
+
+        <junit.version>5.9.1</junit.version>
 
         <!--suppress UnresolvedMavenProperty -->
         <gitlab.username>${CI_REGISTRY_USER}</gitlab.username>
@@ -39,7 +38,7 @@
         <gitlab.password>${CI_REGISTRY_PASSWORD}</gitlab.password>
         <gitlab.registry>registry.gitlab.com/chromaway/core/ai-inference-extension</gitlab.registry>
         <docker.cache>/tmp/docker-cache</docker.cache>
-        <image.platforms>linux/amd64</image.platforms>
+        <image.platforms>linux/amd64,linux/arm64</image.platforms>
         <image.name>chromaway/ai-inference-extension-chromia-subnode</image.name>
     </properties>
 
@@ -53,18 +52,18 @@
                 <scope>import</scope>
             </dependency>
             <dependency>
+                <groupId>org.junit</groupId>
+                <artifactId>junit-bom</artifactId>
+                <version>${junit.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
                 <groupId>org.jetbrains.kotlin</groupId>
                 <artifactId>kotlin-bom</artifactId>
                 <version>${kotlin.version}</version>
                 <scope>import</scope>
                 <type>pom</type>
-            </dependency>
-            <dependency>
-                <groupId>ai.djl</groupId>
-                <artifactId>bom</artifactId>
-                <version>${djl.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
             </dependency>
             <dependency>
                 <groupId>org.testcontainers</groupId>
@@ -100,68 +99,23 @@
             <version>${postchain.chromia.version}</version>
         </dependency>
 
-        <dependency>
-            <groupId>ai.djl</groupId>
-            <artifactId>api</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>ai.djl.huggingface</groupId>
-            <artifactId>tokenizers</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>ai.djl.pytorch</groupId>
-            <artifactId>pytorch-model-zoo</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>ai.djl.pytorch</groupId>
-            <artifactId>pytorch-engine</artifactId>
-            <scope>runtime</scope>
-        </dependency>
-        <dependency>
-            <groupId>ai.djl.pytorch</groupId>
-            <artifactId>pytorch-jni</artifactId>
-            <scope>runtime</scope>
-        </dependency>
-
         <!-- logging -->
         <dependency>
             <groupId>io.github.microutils</groupId>
             <artifactId>kotlin-logging-jvm</artifactId>
         </dependency>
 
-        <!-- Docker image dependencies -->
         <dependency>
-            <groupId>net.postchain</groupId>
-            <artifactId>postchain-server-cli</artifactId>
+            <groupId>org.http4k</groupId>
+            <artifactId>http4k-core</artifactId>
         </dependency>
         <dependency>
-            <groupId>net.postchain</groupId>
-            <artifactId>postchain-web-static</artifactId>
+            <groupId>org.http4k</groupId>
+            <artifactId>http4k-client-apache</artifactId>
         </dependency>
         <dependency>
-            <groupId>net.postchain.rell</groupId>
-            <artifactId>rell-gtx</artifactId>
-            <version>${rell.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>net.postchain</groupId>
-            <artifactId>postchain-eif-core</artifactId>
-            <version>${eif.version}</version>
-        </dependency>
-
-        <!-- Docker image and test dependencies -->
-        <dependency>
-            <groupId>org.apache.logging.log4j</groupId>
-            <artifactId>log4j-slf4j-impl</artifactId>
-        </dependency>
-        <!-- For Log4j2/YAML configuration -->
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.fasterxml.jackson.dataformat</groupId>
-            <artifactId>jackson-dataformat-yaml</artifactId>
+            <groupId>org.http4k</groupId>
+            <artifactId>http4k-format-gson</artifactId>
         </dependency>
 
         <!-- Test -->
@@ -178,6 +132,22 @@
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-slf4j-impl</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- For Log4j2/YAML configuration -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.dataformat</groupId>
+            <artifactId>jackson-dataformat-yaml</artifactId>
             <scope>test</scope>
         </dependency>
         <!-- Needed for testcontainers -->
@@ -288,102 +258,20 @@
                 </executions>
             </plugin>
             <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-dependency-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>unpack</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>unpack</goal>
-                        </goals>
-                        <configuration>
-                            <artifactItems>
-                                <artifactItem>
-                                    <groupId>ai.djl.pytorch</groupId>
-                                    <artifactId>pytorch-native-cpu</artifactId>
-                                    <classifier>linux-x86_64</classifier>
-                                    <overWrite>false</overWrite>
-                                    <includes>pytorch/**</includes>
-                                    <outputDirectory>${project.build.directory}/djl.ai-native/pytorch/2.5.1-cpu-linux-x86_64</outputDirectory>
-                                    <fileMappers>
-                                        <org.codehaus.plexus.components.io.filemappers.FlattenFileMapper/>
-                                    </fileMappers>
-                                </artifactItem>
-                                <artifactItem>
-                                    <groupId>ai.djl.pytorch</groupId>
-                                    <artifactId>pytorch-jni</artifactId>
-                                    <overWrite>false</overWrite>
-                                    <includes>jnilib/linux-x86_64/cpu/libdjl_torch.so</includes>
-                                    <outputDirectory>${project.build.directory}/djl.ai-native/pytorch/2.5.1-cpu-linux-x86_64</outputDirectory>
-                                    <fileMappers>
-                                        <org.codehaus.plexus.components.io.filemappers.FlattenFileMapper/>
-                                        <org.codehaus.plexus.components.io.filemappers.RegExpFileMapper>
-                                            <pattern>libdjl_torch.so$</pattern>
-                                            <replacement>${djl.version}-libdjl_torch.so</replacement>
-                                        </org.codehaus.plexus.components.io.filemappers.RegExpFileMapper>
-                                    </fileMappers>
-                                </artifactItem>
-                                <artifactItem>
-                                    <groupId>ai.djl.huggingface</groupId>
-                                    <artifactId>tokenizers</artifactId>
-                                    <overWrite>false</overWrite>
-                                    <includes>native/lib/linux-x86_64/cpu/libtokenizers.so</includes>
-                                    <outputDirectory>${project.build.directory}/djl.ai-native/tokenizers/0.21.0-0.32.0-cpu-linux-x86_64</outputDirectory>
-                                    <fileMappers>
-                                        <org.codehaus.plexus.components.io.filemappers.FlattenFileMapper/>
-                                    </fileMappers>
-                                </artifactItem>
-                            </artifactItems>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-
-            <plugin>
                 <groupId>com.google.cloud.tools</groupId>
                 <artifactId>jib-maven-plugin</artifactId>
                 <version>3.4.4</version>
                 <configuration>
                     <allowInsecureRegistries>false</allowInsecureRegistries>
                     <from>
-                        <image>
-                            registry.gitlab.com/chromaway/core-tools/chromia-images/java21-postgres16-ubuntu:1.0.1@sha256:100d498d697b9c065674c533d3a3eece1647c4a26463c506afd118b27b401284
-                        </image>
+                        <image>registry.gitlab.com/chromaway/postchain-chromia/chromaway/chromia-subnode:3.30.6@sha256:4de82cee91ed5591a1b8ad33e4d555d5e67172817630e3bc1269d09c9a624dba</image>
                     </from>
                     <to>
                         <image>${image.name}</image>
                     </to>
-                    <extraDirectories>
-                        <paths>
-                            <path>
-                                <from>${project.basedir}/src/main/jib</from>
-                                <into>/</into>
-                            </path>
-                            <path>
-                                <from>${project.build.directory}/djl.ai-native</from>
-                                <into>/opt/djl.ai/engine</into>
-                            </path>
-                        </paths>
-                    </extraDirectories>
                     <container>
                         <appRoot>/opt/chromaway/postchain</appRoot>
-                        <workingDirectory>/opt/chromaway/postchain</workingDirectory>
-                        <entrypoint>/bin/bash</entrypoint>
-                        <args>entrypoint.sh</args>
-                        <environment>
-                            <POSTCHAIN_RUNNING_IN_CONTAINER>true</POSTCHAIN_RUNNING_IN_CONTAINER>
-                            <LOG4J_CONFIGURATION_FILE>/opt/chromaway/postchain/log4j2.yml</LOG4J_CONFIGURATION_FILE>
-                            <POSTCHAIN_DIR>/opt/chromaway/postchain</POSTCHAIN_DIR>
-                            <POSTGRES_DB>postchain</POSTGRES_DB>
-                            <POSTGRES_USER>postchain</POSTGRES_USER>
-                            <POSTGRES_PASSWORD>postchain</POSTGRES_PASSWORD>
-                            <POSTGRES_INITDB_ARGS>--lc-collate=C.UTF-8 --lc-ctype=C.UTF-8 --encoding=UTF-8</POSTGRES_INITDB_ARGS>
-                            <PGDATA>/var/lib/postgresql/data</PGDATA>
-                            <ENGINE_CACHE_DIR>/opt/djl.ai/engine</ENGINE_CACHE_DIR>
-                            <DJL_CACHE_DIR>/tmp/djl.ai</DJL_CACHE_DIR>
-                            <HF_HOME>/tmp/huggingface</HF_HOME>
-                        </environment>
+                        <entrypoint>INHERIT</entrypoint>
                         <creationTime>${git.commit.time}</creationTime>
                         <filesModificationTime>${git.commit.time}</filesModificationTime>
                     </container>
@@ -399,7 +287,7 @@
                     </execution>
                     <execution>
                         <id>docker-build</id>
-                        <phase>pre-integration-test</phase>
+                        <phase>install</phase>
                         <goals>
                             <goal>dockerBuild</goal>
                         </goals>
@@ -410,6 +298,35 @@
     </build>
 
     <profiles>
+        <profile>
+            <id>docker-arm</id>
+            <activation>
+                <os>
+                    <family>mac</family>
+                    <arch>aarch64</arch>
+                </os>
+            </activation>
+            <build>
+                <pluginManagement>
+                    <plugins>
+                        <plugin>
+                            <groupId>com.google.cloud.tools</groupId>
+                            <artifactId>jib-maven-plugin</artifactId>
+                            <configuration>
+                                <from>
+                                    <platforms>
+                                        <platform>
+                                            <os>linux</os>
+                                            <architecture>arm64</architecture>
+                                        </platform>
+                                    </platforms>
+                                </from>
+                            </configuration>
+                        </plugin>
+                    </plugins>
+                </pluginManagement>
+            </build>
+        </profile>
         <profile>
             <id>docker-push</id>
             <build>
@@ -428,6 +345,10 @@
                                         <platforms>
                                             <platform>
                                                 <architecture>amd64</architecture>
+                                                <os>linux</os>
+                                            </platform>
+                                            <platform>
+                                                <architecture>arm64</architecture>
                                                 <os>linux</os>
                                             </platform>
                                         </platforms>
@@ -463,16 +384,6 @@
             <id>postchain-chromia</id>
             <name>Postchain Chromia GitLab Registry</name>
             <url>https://gitlab.com/api/v4/projects/33481005/packages/maven</url>
-        </repository>
-        <repository>
-            <id>rell</id>
-            <name>Rell Registry</name>
-            <url>https://gitlab.com/api/v4/projects/32802097/packages/maven</url>
-        </repository>
-        <repository>
-            <id>postchain-eif</id>
-            <name>Postchain EIF Gtx module Registry</name>
-            <url>https://gitlab.com/api/v4/projects/36768178/packages/maven</url>
         </repository>
     </repositories>
 
