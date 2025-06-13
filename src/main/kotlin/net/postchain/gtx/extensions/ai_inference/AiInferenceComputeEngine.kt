@@ -1,167 +1,217 @@
 package net.postchain.gtx.extensions.ai_inference
 
-import ai.djl.Device
-import ai.djl.huggingface.tokenizers.Encoding
-import ai.djl.huggingface.tokenizers.HuggingFaceTokenizer
-import ai.djl.modality.nlp.generate.CausalLMOutput
-import ai.djl.modality.nlp.generate.SearchConfig
-import ai.djl.modality.nlp.generate.TextGenerator
-import ai.djl.ndarray.NDList
-import ai.djl.repository.zoo.Criteria
-import ai.djl.repository.zoo.ZooModel
-import ai.djl.translate.DeferredTranslatorFactory
 import mu.KLogging
+import net.postchain.PostchainContext
 import net.postchain.common.BlockchainRid
+import net.postchain.common.exception.ProgrammerMistake
 import net.postchain.common.exception.UserMistake
+import net.postchain.config.app.AppConfig
+import net.postchain.core.BlockchainConfiguration
 import net.postchain.gtv.Gtv
 import net.postchain.gtv.mapper.DefaultValue
 import net.postchain.gtv.mapper.GtvObjectMapper
 import net.postchain.gtv.mapper.Name
 import net.postchain.gtv.mapper.toObject
+import net.postchain.gtx.PostchainContextAware
 import net.postchain.gtx.extensions.ai_inference.rell.lib.ai_inference.Request
 import net.postchain.gtx.extensions.ai_inference.rell.lib.ai_inference.Response
 import net.postchain.hybridcompute.HybridComputeEngine
-import kotlin.time.measureTime
-import kotlin.time.measureTimedValue
+import org.apache.hc.client5.http.config.ConnectionConfig
+import org.apache.hc.client5.http.config.RequestConfig
+import org.apache.hc.client5.http.cookie.StandardCookieSpec
+import org.apache.hc.client5.http.impl.classic.HttpClients
+import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManagerBuilder
+import org.apache.hc.core5.util.Timeout
+import org.http4k.client.ApacheClient
+import org.http4k.core.Credentials
+import org.http4k.core.HttpHandler
+import org.http4k.core.Method
+import org.http4k.core.then
+import org.http4k.core.with
+import org.http4k.filter.ClientFilters
+import org.http4k.filter.GzipCompressionMode
+import org.http4k.lens.basicAuthentication
+import org.http4k.core.Request as HttpRequest
+
+data class AiInferenceNodeConfig(
+        val url: String,
+        val basicAuth: Credentials? = null,
+) {
+    companion object {
+        private const val CONFIG_ENV_PREFIX = "POSTCHAIN_EXTENSION_AI_INFERENCE_"
+        private const val URL = "${CONFIG_ENV_PREFIX}URL"
+        private const val BASIC_AUTH_USER = "${CONFIG_ENV_PREFIX}BASIC_AUTH_USER"
+        private const val BASIC_AUTH_PASSWORD = "${CONFIG_ENV_PREFIX}BASIC_AUTH_PASSWORD"
+
+        @JvmStatic
+        fun fromAppConfig(config: AppConfig): AiInferenceNodeConfig {
+            val basicAuthUser = config.getEnvOrString(BASIC_AUTH_USER, "extension.ai_inference.basic_auth_user")
+            val basicAuthPassword = config.getEnvOrString(BASIC_AUTH_PASSWORD, "extension.ai_inference.basic_auth_password")
+            if (basicAuthUser != null && basicAuthPassword == null) {
+                throw UserMistake("If $BASIC_AUTH_USER is set, $BASIC_AUTH_PASSWORD must be set as well")
+            }
+            if (basicAuthUser == null && basicAuthPassword != null) {
+                throw UserMistake("If $BASIC_AUTH_PASSWORD is set, $BASIC_AUTH_USER must be set as well")
+            }
+            return AiInferenceNodeConfig(
+                    url = config.getEnvOrString(URL, "extension.ai_inference.url")
+                            ?: throw UserMistake("AI inference URL must be configured"),
+                    basicAuth = if (basicAuthUser != null && basicAuthPassword != null)
+                        Credentials(basicAuthUser, basicAuthPassword)
+                    else null,
+            )
+        }
+    }
+}
 
 data class AiInferenceConfig(
-        @Name("model_url")
-        val modelUrl: String,
+        @Name("model")
+        val model: String,
 
-        @Name("tokenizer_name")
-        val tokenizerName: String,
-
-        @Name("max_sequence_length")
-        @DefaultValue(defaultLong = AiInferenceComputeEngine.DEFAULT_SEQUENCE_LENGTH.toLong())
-        val maxSequenceLength: Long,
-
-        @Name("max_length")
-        @DefaultValue(defaultLong = AiInferenceComputeEngine.MAX_LENGTH.toLong())
-        val maxLength: Long,
+        @Name("timeout_seconds")
+        @DefaultValue(defaultLong = AiInferenceComputeEngine.DEFAULT_TIMEOUT_SECONDS.toLong())
+        val timeoutSeconds: Long,
 )
 
-class AiInferenceComputeEngine : HybridComputeEngine {
+class AiInferenceComputeEngine : HybridComputeEngine, PostchainContextAware {
     companion object : KLogging() {
         const val NAME = "ai_inference"
-        const val DEFAULT_SEQUENCE_LENGTH = 60
-        const val MAX_LENGTH = 512
+        const val CONNECT_TIMEOUT_SECONDS = 10
+        const val DEFAULT_TIMEOUT_SECONDS = 60
     }
 
     override val name = NAME
 
+    lateinit var nodeConfig: AiInferenceNodeConfig
     lateinit var config: AiInferenceConfig
+    lateinit var client: HttpHandler
 
-    lateinit var model: ZooModel<NDList, CausalLMOutput>
-    lateinit var tokenizer: HuggingFaceTokenizer
-    lateinit var searchConfig: SearchConfig
-
-    internal var offline = true
+    override fun initializeContext(configuration: BlockchainConfiguration, postchainContext: PostchainContext) {
+        nodeConfig = AiInferenceNodeConfig.fromAppConfig(postchainContext.appConfig)
+    }
 
     override fun init(blockchainConfig: Gtv, blockchainRID: BlockchainRid) {
         config = blockchainConfig.asDict()[NAME]?.toObject<AiInferenceConfig>()
                 ?: throw UserMistake("$NAME configuration not found")
-        if (config.modelUrl.isBlank()) {
-            throw UserMistake("$NAME configuration invalid: no model_url specified")
+        if (config.model.isBlank()) {
+            throw UserMistake("$NAME configuration invalid: no model specified")
         }
-        if (config.tokenizerName.isBlank()) {
-            throw UserMistake("$NAME configuration invalid: no tokenizer_name specified")
+        if (config.timeoutSeconds < 1 || config.timeoutSeconds > Integer.MAX_VALUE) {
+            throw UserMistake("$NAME configuration invalid: timeout_seconds must be between 1 and ${Integer.MAX_VALUE}")
         }
-        if (config.maxSequenceLength < 1 || config.maxSequenceLength > Integer.MAX_VALUE) {
-            throw UserMistake("$NAME configuration invalid: max_sequence_length must be between 1 and ${Integer.MAX_VALUE}")
-        }
-        if (config.maxLength < 1 || config.maxLength > MAX_LENGTH) {
-            throw UserMistake("$NAME configuration invalid: max_length must be between 1 and $MAX_LENGTH")
-        }
+        client = ClientFilters.AcceptGZip(GzipCompressionMode.Streaming())
+                .then(
+                        ClientFilters.RequestTracing(
+                                startReportFn = { request, _ ->
+                                    logger.debug { "\n$request" }
+                                },
+                                endReportFn = { _, response, _ ->
+                                    logger.debug { "\n$response" }
+                                }
+                        ).then(
+                                ApacheClient(HttpClients.custom()
+                                        .setConnectionManager(PoolingHttpClientConnectionManagerBuilder.create()
+                                                .setDefaultConnectionConfig(ConnectionConfig.custom()
+                                                        .setConnectTimeout(Timeout.ofSeconds(CONNECT_TIMEOUT_SECONDS.toLong()))
+                                                        .build())
+                                                .build())
+                                        .setDefaultRequestConfig(
+                                                RequestConfig.custom()
+                                                        .setRedirectsEnabled(false)
+                                                        .setCookieSpec(StandardCookieSpec.IGNORE)
+                                                        .setResponseTimeout(Timeout.ofSeconds(config.timeoutSeconds))
+                                                        .build())
+                                        .build())
+                        ))
     }
 
     override fun load() {
-        logger.info("Initializing engine...")
-        val duration = measureTime {
-            System.setProperty("ai.djl.offline", offline.toString())
-
-            val criteria: Criteria<NDList, CausalLMOutput> = Criteria.builder()
-                    .setTypes(NDList::class.java, CausalLMOutput::class.java)
-                    .optModelUrls(config.modelUrl)
-                    .optEngine("PyTorch")
-                    .optDevice(Device.cpu())
-                    .optTranslatorFactory(DeferredTranslatorFactory())
-                    .build()
-
-            model = criteria.loadModel()
-            tokenizer = HuggingFaceTokenizer.builder()
-                    .optTokenizerName(config.tokenizerName)
-                    .optMaxLength(config.maxLength.toInt())
-                    .build()
-            searchConfig = SearchConfig()
-            searchConfig.maxSeqLength = config.maxSequenceLength.toInt()
-        }
-        logger.info("Initialized engine in $duration")
+        // nothing to do here
     }
 
     override fun compute(input: Gtv): Gtv {
         val request = input.toObject<Request>()
-        logger.info("Generating text...")
-        val (response, duration) = measureTimedValue { generateText(request) }
-        logger.info("Generated in $duration")
-        return GtvObjectMapper.toGtvDictionary(response)
+        if (!request.prompt.isNullOrEmpty() && request.messages.isNullOrEmpty()) {
+            val response = generateText(request.prompt)
+            return GtvObjectMapper.toGtvDictionary(response)
+        } else if (request.prompt.isNullOrEmpty() && !request.messages.isNullOrEmpty()) {
+            val response = generateChat(request.messages.map { ChatMessage(role = it.role, content = it.message) })
+            return GtvObjectMapper.toGtvDictionary(response)
+        } else {
+            throw UserMistake("Invalid request: either prompt or messages must be set, but not both.")
+        }
     }
 
-    /**
-     * Generates a text string using PyTorch with greedy search.
-     */
-    fun generateText(input: Request): Response {
-        model.newPredictor().use { predictor ->
-            val generator = TextGenerator(predictor, "greedy", searchConfig)
-            val encoding: Encoding = tokenizer.encode(input.prompt)
-            val inputIds: LongArray = encoding.ids
-            return model.ndManager.newSubManager().use { manager ->
-                val inputIdArray = manager.create(inputIds).expandDims(0)
-                val output = generator.generate(inputIdArray)
-                val outputIds = output.toLongArray()
-                val generatedText = tokenizer.decode(outputIds)
-                Response(
-                        promptLength = inputIds.size.toLong(),
-                        tokens = outputIds.toList(),
-                        text = generatedText
-                )
-            }
+    fun generateText(prompt: String): Response {
+        val httpResponse = client(HttpRequest(Method.POST, "${nodeConfig.url}/v1/completions/verified")
+                .with(verifiedCompletionRequest of VerifiedCompletionRequest(
+                        model = config.model,
+                        prompt = prompt
+                )).let { if (nodeConfig.basicAuth != null) it.basicAuthentication(nodeConfig.basicAuth!!) else it })
+        if (!httpResponse.status.successful) {
+            throw ProgrammerMistake("Failed to generate text: ${httpResponse.status} ${httpResponse.bodyString()}")
         }
+        val response = verifiedCompletionResponse(httpResponse)
+        val choice = response.choices.firstOrNull() ?: throw UserMistake("No choices found in response")
+        if (response.choices.size > 1) {
+            logger.warn("More than one (${response.choices.size}) choice found in response. Using first one.")
+        }
+        logger.info("Generated id ${response.id} at ${response.created} with model ${response.model} with finish reason ${choice.finish_reason}")
+        return Response(
+                promptTokens = choice.prompt_token_ids,
+                textTokens = choice.completion_token_ids,
+                text = choice.text,
+        )
+    }
+
+    fun generateChat(messages: List<ChatMessage>): Response {
+        val httpResponse = client(HttpRequest(Method.POST, "${nodeConfig.url}/v1/chat/completions/verified")
+                .with(verifiedChatCompletionRequest of VerifiedChatCompletionRequest(
+                        model = config.model,
+                        messages = messages,
+                )).let { if (nodeConfig.basicAuth != null) it.basicAuthentication(nodeConfig.basicAuth!!) else it })
+        if (!httpResponse.status.successful) {
+            throw ProgrammerMistake("Failed to generate chat: ${httpResponse.status} ${httpResponse.bodyString()}")
+        }
+        val response = verifiedChatCompletionResponse(httpResponse)
+        val choice = response.choices.firstOrNull() ?: throw UserMistake("No choices found in chat response")
+        if (response.choices.size > 1) {
+            logger.warn("More than one (${response.choices.size}) choice found in chat response. Using first one.")
+        }
+        logger.info("Generated chat id ${response.id} at ${response.created} with model ${response.model} with finish reason ${choice.finish_reason}")
+        return Response(
+                promptTokens = choice.prompt_token_ids,
+                textTokens = choice.completion_token_ids,
+                text = choice.message.content,
+        )
     }
 
     override fun validate(output: Gtv) {
         val response = output.toObject<Response>()
-        logger.info("Verifying generated text...")
-        val (error, duration) = measureTimedValue { verifyTextGeneration(response) }
-        logger.info("Verified in $duration $error")
-        if (error != null) {
-            throw UserMistake(error)
-        }
+        verifyTextGeneration(response.promptTokens, response.textTokens)
     }
 
-    /**
-     * Verifies a generated text by re-encoding it into token IDs and verifying via the verifier,
-     * excluding the prompt tokens from verification.
-     *
-     * @return `null` if the model predictions match the input tokens (excluding prompt tokens),
-     *      an error message if not
-     */
-    fun verifyTextGeneration(response: Response): String? {
-        model.newPredictor().use { predictor ->
-            val verifier = TextGeneratorVerifier(predictor, searchConfig, tokenizer)
-            return model.ndManager.newSubManager().use { manager ->
-                val outputIds = response.tokens.toLongArray()
-                val outputIdArray = manager.create(outputIds).expandDims(0)
-                verifier.verify(outputIdArray, response.promptLength.toInt())
-            }
+    fun verifyTextGeneration(promptTokens: List<Long>, textTokens: List<Long>) {
+        val httpResponse = client(HttpRequest(Method.POST, "${nodeConfig.url}/v1/verify_decoding")
+                .with(verifyDecodingRequest of VerifyDecodingRequest(
+                        model = config.model,
+                        prompt = promptTokens,
+                        completion = textTokens,
+                        prompt_logprobs = 0,
+                        check_greedy = true,
+                        greedy_logprob_threshold = 0.001,
+                )).let { if (nodeConfig.basicAuth != null) it.basicAuthentication(nodeConfig.basicAuth!!) else it })
+        if (!httpResponse.status.successful) {
+            throw ProgrammerMistake("Failed to verify text: ${httpResponse.status} ${httpResponse.bodyString()}")
+        }
+        val response = verifyDecodingResponse(httpResponse)
+        logger.info("Verified id ${response.id} at ${response.created} with model ${response.model} is_verified_greedy=${response.is_verified_greedy}")
+        if (!response.is_verified_greedy) {
+            throw UserMistake("Generated text does not match")
         }
     }
 
     override fun shutdown() {
-        logger.info("Shutting down...")
-        val duration = measureTime {
-            if (::tokenizer.isInitialized) tokenizer.close()
-            if (::model.isInitialized) model.close()
-        }
-        logger.info("Shutdown in $duration")
+        // nothing to do here
     }
 }

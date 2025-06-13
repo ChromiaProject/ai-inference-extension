@@ -7,12 +7,12 @@ libs:
   hybridcompute:
     registry: https://gitlab.com/chromaway/postchain-chromia
     path: chromia-infrastructure/rell/src/lib/hybridcompute
-    tagOrBranch: 3.27.6
-    rid: x"DF9EF3C9333D497F501B2D230CA0B9FD12F5288FA4E1D9F5DDBE916506543887"
+    tagOrBranch: 3.30.6
+    rid: x"7F4921AB6D1D7FB4CE1B415A011CB8327C39D9F6BFDA95FCDCF31954BECCA4EB"
     insecure: false
 
 compile:
-  rellVersion: 0.14.5
+  rellVersion: 0.14.11
 
 test:
   modules:

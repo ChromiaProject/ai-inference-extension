@@ -5,7 +5,7 @@ import ^.helpers.*;
 import hc: ^^^.hybridcompute;
 import hch: ^^^.hybridcompute.test.helpers;
 
-function test_ai_inference_success() {
+function test_text_inference_success() {
     rell.test.tx().op(
         submit_inference_request_op("one", "ABCD")
     ).run();
@@ -13,10 +13,10 @@ function test_ai_inference_success() {
     assert_equals(result.id, "");
 
     rell.test.tx().op(
-        hch.request_taken_op("one")
+        hch.request_taken_op("one", x"")
     ).run();
     rell.test.tx().op(
-        hch.response_op("one", "ai_inference", response(prompt_length=4, tokens=[1, 2, 3, 4], text="ABCD 1234").to_gtv_pretty())
+        hch.response_op("one", "ai_inference", response(prompt_tokens=[1, 2, 3, 4], text_tokens=[5, 6, 7], text="ABCD 1234").to_gtv_pretty())
     ).run();
     assert_equals(fetch_inference_result("one"), inference_result(result="ABCD 1234", error=null,
         tx_rid=transaction @ { } (@omit @sort_desc .rowid, .tx_rid) limit 1, op_index=0));
@@ -25,7 +25,7 @@ function test_ai_inference_success() {
     assert_equals(result.error, "");
 }
 
-function test_ai_inference_failure() {
+function test_text_inference_failure() {
     rell.test.tx().op(
         submit_inference_request_op("two", "ABCD")
     ).run();
@@ -33,7 +33,47 @@ function test_ai_inference_failure() {
     assert_equals(result.id, "");
 
     rell.test.tx().op(
-        hch.request_taken_op("two")
+        hch.request_taken_op("two", x"")
+    ).run();
+    rell.test.tx().op(
+        hch.failure_op("two", "ai_inference", "fel fel fel")
+    ).run();
+    assert_equals(fetch_inference_result("two"), inference_result(result=null, error="fel fel fel",
+        tx_rid=transaction @ { } (@omit @sort_desc .rowid, .tx_rid) limit 1, op_index=0));
+    assert_equals(result.id, "two");
+    assert_equals(result.result, "");
+    assert_equals(result.error, "fel fel fel");
+}
+
+function test_chat_inference_success() {
+    rell.test.tx().op(
+        submit_chat_inference_request_op("one", [chat_message(role="user", message="ABCD")])
+    ).run();
+    assert_null(fetch_inference_result("one"));
+    assert_equals(result.id, "");
+
+    rell.test.tx().op(
+        hch.request_taken_op("one", x"")
+    ).run();
+    rell.test.tx().op(
+        hch.response_op("one", "ai_inference", response(prompt_tokens=[1, 2, 3, 4], text_tokens=[5, 6, 7], text="ABCD 1234").to_gtv_pretty())
+    ).run();
+    assert_equals(fetch_inference_result("one"), inference_result(result="ABCD 1234", error=null,
+        tx_rid=transaction @ { } (@omit @sort_desc .rowid, .tx_rid) limit 1, op_index=0));
+    assert_equals(result.id, "one");
+    assert_equals(result.result, "ABCD 1234");
+    assert_equals(result.error, "");
+}
+
+function test_chat_inference_failure() {
+    rell.test.tx().op(
+        submit_chat_inference_request_op("two", [chat_message(role="user", message="ABCD")])
+    ).run();
+    assert_null(fetch_inference_result("two"));
+    assert_equals(result.id, "");
+
+    rell.test.tx().op(
+        hch.request_taken_op("two", x"")
     ).run();
     rell.test.tx().op(
         hch.failure_op("two", "ai_inference", "fel fel fel")
