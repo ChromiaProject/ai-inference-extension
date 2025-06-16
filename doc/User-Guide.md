@@ -22,7 +22,9 @@ config:
     engine: "net.postchain.gtx.extensions.ai_inference.AiInferenceComputeEngine"
   ai_inference:
     model: "your-model-name" # Specify model name here
-    timeout_seconds: 600 # Timeout in seconds for each inference and validation  
+    timeout_seconds: 600 # Timeout in seconds for each inference and validation
+    max_completion_tokens: 100 # An upper bound for the number of tokens that can be generated for a completion,
+    # including visible output tokens and reasoning tokens.
 ```
 
 ## Rell

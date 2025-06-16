@@ -20,6 +20,12 @@ data class VerifiedCompletionRequest(
          * The input prompt.
          */
         val prompt: String,
+
+        /**
+         * An upper bound for the number of tokens that can be generated for a completion,
+         * including visible output tokens and reasoning tokens.
+         */
+        val max_completion_tokens: Long? = null,
 )
 
 data class VerifiedCompletionResponse(
@@ -88,6 +94,12 @@ data class VerifiedChatCompletionRequest(
          * A list of messages comprising the conversation so far.
          */
         val messages: List<ChatMessage>,
+
+        /**
+         * An upper bound for the number of tokens that can be generated for a completion,
+         * including visible output tokens and reasoning tokens.
+         */
+        val max_completion_tokens: Long? = null,
 )
 
 data class VerifiedChatCompletionResponse(

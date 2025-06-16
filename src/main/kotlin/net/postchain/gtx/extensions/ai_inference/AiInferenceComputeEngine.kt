@@ -71,6 +71,9 @@ data class AiInferenceConfig(
         @Name("timeout_seconds")
         @DefaultValue(defaultLong = AiInferenceComputeEngine.DEFAULT_TIMEOUT_SECONDS.toLong())
         val timeoutSeconds: Long,
+
+        @Name("max_completion_tokens")
+        val maxCompletionTokens: Long,
 )
 
 class AiInferenceComputeEngine : HybridComputeEngine, PostchainContextAware {
@@ -146,7 +149,8 @@ class AiInferenceComputeEngine : HybridComputeEngine, PostchainContextAware {
         val httpResponse = client(HttpRequest(Method.POST, "${nodeConfig.url}/v1/completions/verified")
                 .with(verifiedCompletionRequest of VerifiedCompletionRequest(
                         model = config.model,
-                        prompt = prompt
+                        prompt = prompt,
+                        max_completion_tokens = config.maxCompletionTokens,
                 )).let { if (nodeConfig.basicAuth != null) it.basicAuthentication(nodeConfig.basicAuth!!) else it })
         if (!httpResponse.status.successful) {
             throw ProgrammerMistake("Failed to generate text: ${httpResponse.status} ${httpResponse.bodyString()}")
@@ -169,6 +173,7 @@ class AiInferenceComputeEngine : HybridComputeEngine, PostchainContextAware {
                 .with(verifiedChatCompletionRequest of VerifiedChatCompletionRequest(
                         model = config.model,
                         messages = messages,
+                        max_completion_tokens = config.maxCompletionTokens,
                 )).let { if (nodeConfig.basicAuth != null) it.basicAuthentication(nodeConfig.basicAuth!!) else it })
         if (!httpResponse.status.successful) {
             throw ProgrammerMistake("Failed to generate chat: ${httpResponse.status} ${httpResponse.bodyString()}")

@@ -30,7 +30,8 @@ class AiInferenceTest {
             engine.nodeConfig = AiInferenceNodeConfig(url = URL, basicAuth = null)
             val testConfig = AiInferenceConfig(
                     model = MODEL,
-                    timeoutSeconds = 10.toLong(),
+                    timeoutSeconds = 10L,
+                    maxCompletionTokens = 100L,
             )
             engine.init(
                     gtv(mapOf(AiInferenceComputeEngine.NAME to GtvObjectMapper.toGtvDictionary(testConfig))),
