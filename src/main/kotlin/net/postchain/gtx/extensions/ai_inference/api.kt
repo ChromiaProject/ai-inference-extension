@@ -44,7 +44,12 @@ data class VerifiedCompletionResponse(
          */
         val model: String,
 
-        val choices: List<VerifiedCompletionResponseChoice>
+        val choices: List<VerifiedCompletionResponseChoice>,
+
+        /**
+         * Represents token usage details.
+         */
+        val usage: UsageInfo,
 )
 
 data class VerifiedCompletionResponseChoice(
@@ -118,7 +123,12 @@ data class VerifiedChatCompletionResponse(
          */
         val model: String,
 
-        val choices: List<VerifiedChatCompletionResponseChoice>
+        val choices: List<VerifiedChatCompletionResponseChoice>,
+
+        /**
+         * Represents token usage details.
+         */
+        val usage: UsageInfo,
 )
 
 data class VerifiedChatCompletionResponseChoice(
@@ -168,6 +178,17 @@ data class ChatMessage(
          * The contents of the message.
          */
         val content: String,
+)
+
+/**
+ * Represents token usage details.
+ */
+data class UsageInfo(
+        val prompt_tokens: Long,
+
+        val completion_tokens: Long,
+
+        val total_tokens: Long,
 )
 
 data class VerifyDecodingRequest(
