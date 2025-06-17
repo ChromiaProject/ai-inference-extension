@@ -40,10 +40,10 @@ libs:
     rid: x"7F4921AB6D1D7FB4CE1B415A011CB8327C39D9F6BFDA95FCDCF31954BECCA4EB"
     insecure: false
   ai_inference:
-    registry: https://gitlab.com/chromaway/core/ai-inference-extension 
+    registry: https://gitlab.com/chromaway/core/ai-inference-extension
     path: rell/src/lib/ai_inference
-    tagOrBranch: ${VERSION}
-    rid: ${RID}
+    tagOrBranch: 0.2.0
+    rid: x"0AA58FFDD9EB238AD1CC60A16798E0E7D57DA883C50BD4EF35F9F0BE31CF0A51"
     insecure: false
 ```
 
