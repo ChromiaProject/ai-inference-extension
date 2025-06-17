@@ -2,7 +2,6 @@ package net.postchain.gtx.extensions.ai_inference
 
 import mu.KLogging
 import net.postchain.PostchainContext
-import net.postchain.common.BlockchainRid
 import net.postchain.common.exception.ProgrammerMistake
 import net.postchain.common.exception.UserMistake
 import net.postchain.config.app.AppConfig
@@ -81,20 +80,19 @@ class AiInferenceComputeEngine : HybridComputeEngine, PostchainContextAware {
         const val NAME = "ai_inference"
         const val CONNECT_TIMEOUT_SECONDS = 10
         const val DEFAULT_TIMEOUT_SECONDS = 60
+
+        const val BASE_REQUEST_COST = 1000L
     }
 
     override val name = NAME
 
-    lateinit var nodeConfig: AiInferenceNodeConfig
-    lateinit var config: AiInferenceConfig
-    lateinit var client: HttpHandler
+    internal lateinit var nodeConfig: AiInferenceNodeConfig
+    internal lateinit var config: AiInferenceConfig
+    internal lateinit var client: HttpHandler
 
     override fun initializeContext(configuration: BlockchainConfiguration, postchainContext: PostchainContext) {
         nodeConfig = AiInferenceNodeConfig.fromAppConfig(postchainContext.appConfig)
-    }
-
-    override fun init(blockchainConfig: Gtv, blockchainRID: BlockchainRid) {
-        config = blockchainConfig.asDict()[NAME]?.toObject<AiInferenceConfig>()
+        config = configuration.rawConfig.asDict()[NAME]?.toObject<AiInferenceConfig>()
                 ?: throw UserMistake("$NAME configuration not found")
         if (config.model.isBlank()) {
             throw UserMistake("$NAME configuration invalid: no model specified")
@@ -132,20 +130,35 @@ class AiInferenceComputeEngine : HybridComputeEngine, PostchainContextAware {
         // nothing to do here
     }
 
-    override fun compute(input: Gtv): Gtv {
+    override fun estimatePoints(input: Gtv): Long {
         val request = input.toObject<Request>()
-        if (!request.prompt.isNullOrEmpty() && request.messages.isNullOrEmpty()) {
-            val response = generateText(request.prompt)
-            return GtvObjectMapper.toGtvDictionary(response)
+        return if (!request.prompt.isNullOrEmpty() && request.messages.isNullOrEmpty()) {
+            estimateText(request.prompt)
         } else if (request.prompt.isNullOrEmpty() && !request.messages.isNullOrEmpty()) {
-            val response = generateChat(request.messages.map { ChatMessage(role = it.role, content = it.message) })
-            return GtvObjectMapper.toGtvDictionary(response)
+            estimateChat(request.messages.map { ChatMessage(role = it.role, content = it.message) })
         } else {
             throw UserMistake("Invalid request: either prompt or messages must be set, but not both.")
         }
     }
 
-    fun generateText(prompt: String): Response {
+    override fun compute(input: Gtv): Pair<Gtv, Long> {
+        val request = input.toObject<Request>()
+        if (!request.prompt.isNullOrEmpty() && request.messages.isNullOrEmpty()) {
+            val (response, cost) = generateText(request.prompt)
+            return GtvObjectMapper.toGtvDictionary(response) to cost
+        } else if (request.prompt.isNullOrEmpty() && !request.messages.isNullOrEmpty()) {
+            val (response, cost) = generateChat(request.messages.map { ChatMessage(role = it.role, content = it.message) })
+            return GtvObjectMapper.toGtvDictionary(response) to cost
+        } else {
+            throw UserMistake("Invalid request: either prompt or messages must be set, but not both.")
+        }
+    }
+
+    fun estimateText(prompt: String): Long = BASE_REQUEST_COST +
+            prompt.length +
+            config.maxCompletionTokens * 2
+
+    fun generateText(prompt: String): Pair<Response, Long> {
         val httpResponse = client(HttpRequest(Method.POST, "${nodeConfig.url}/v1/completions/verified")
                 .with(verifiedCompletionRequest of VerifiedCompletionRequest(
                         model = config.model,
@@ -165,10 +178,14 @@ class AiInferenceComputeEngine : HybridComputeEngine, PostchainContextAware {
                 promptTokens = choice.prompt_token_ids,
                 textTokens = choice.completion_token_ids,
                 text = choice.text,
-        )
+        ) to BASE_REQUEST_COST + response.usage.prompt_tokens + response.usage.completion_tokens * 2
     }
 
-    fun generateChat(messages: List<ChatMessage>): Response {
+    fun estimateChat(messages: List<ChatMessage>): Long = BASE_REQUEST_COST +
+            messages.sumOf { it.role.length + it.content.length } +
+            config.maxCompletionTokens * 2
+
+    fun generateChat(messages: List<ChatMessage>): Pair<Response, Long> {
         val httpResponse = client(HttpRequest(Method.POST, "${nodeConfig.url}/v1/chat/completions/verified")
                 .with(verifiedChatCompletionRequest of VerifiedChatCompletionRequest(
                         model = config.model,
@@ -188,7 +205,7 @@ class AiInferenceComputeEngine : HybridComputeEngine, PostchainContextAware {
                 promptTokens = choice.prompt_token_ids,
                 textTokens = choice.completion_token_ids,
                 text = choice.message.content,
-        )
+        ) to BASE_REQUEST_COST + response.usage.prompt_tokens + response.usage.completion_tokens * 2
     }
 
     override fun validate(output: Gtv) {
@@ -214,9 +231,5 @@ class AiInferenceComputeEngine : HybridComputeEngine, PostchainContextAware {
         if (!response.is_verified_greedy) {
             throw UserMistake("Generated text does not match")
         }
-    }
-
-    override fun shutdown() {
-        // nothing to do here
     }
 }

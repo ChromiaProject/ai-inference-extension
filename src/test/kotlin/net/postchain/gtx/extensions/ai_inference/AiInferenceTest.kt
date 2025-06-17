@@ -3,18 +3,22 @@ package net.postchain.gtx.extensions.ai_inference
 import assertk.assertFailure
 import assertk.assertions.isInstanceOf
 import mu.KLogging
-import net.postchain.common.BlockchainRid
+import net.postchain.PostchainContext
 import net.postchain.common.exception.UserMistake
+import net.postchain.config.app.AppConfig
+import net.postchain.core.BlockchainConfiguration
 import net.postchain.gtv.GtvFactory.gtv
 import net.postchain.gtv.mapper.GtvObjectMapper
 import net.postchain.gtx.extensions.ai_inference.rell.lib.ai_inference.Request
 import net.postchain.gtx.extensions.ai_inference.rell.lib.ai_inference.Response
-import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
+import org.mockito.kotlin.any
+import org.mockito.kotlin.doReturn
+import org.mockito.kotlin.mock
 
 const val URL = "http://localhost:5000" // TODO test URL
 const val MODEL = "the-model" // TODO test model
@@ -27,23 +31,22 @@ class AiInferenceTest {
         @JvmStatic
         fun setup() {
             engine = AiInferenceComputeEngine()
-            engine.nodeConfig = AiInferenceNodeConfig(url = URL, basicAuth = null)
-            val testConfig = AiInferenceConfig(
+            val blockchainConfig = AiInferenceConfig(
                     model = MODEL,
                     timeoutSeconds = 10L,
                     maxCompletionTokens = 100L,
             )
-            engine.init(
-                    gtv(mapOf(AiInferenceComputeEngine.NAME to GtvObjectMapper.toGtvDictionary(testConfig))),
-                    BlockchainRid.ZERO_RID
-            )
+            val configuration = mock<BlockchainConfiguration> {
+                on { rawConfig } doReturn gtv(mapOf(AiInferenceComputeEngine.NAME to GtvObjectMapper.toGtvDictionary(blockchainConfig)))
+            }
+            val mockAppConfig = mock<AppConfig> {
+                on { getEnvOrString(any(), any()) } doReturn URL
+            }
+            val postchainContext = mock<PostchainContext> {
+                on { appConfig } doReturn mockAppConfig
+            }
+            engine.initializeContext(configuration, postchainContext)
             engine.load()
-        }
-
-        @AfterAll
-        @JvmStatic
-        fun tearDown() {
-            engine.shutdown()
         }
     }
 
@@ -51,16 +54,18 @@ class AiInferenceTest {
     @Disabled // for manual testing
     fun `text inference`() {
         val prompt = "Translate 'hello' to French:"
-        val response = engine.generateText(prompt)
+        val (response, points) = engine.generateText(prompt)
         println(response)
+        println(points)
     }
 
     @Test
     @Disabled // for manual testing
     fun `chat inference`() {
         val messages = listOf(ChatMessage(role = "user", content = "What is the capital of France?"))
-        val response = engine.generateChat(messages)
+        val (response, points) = engine.generateChat(messages)
         println(response)
+        println(points)
     }
 
     @Test
@@ -82,7 +87,7 @@ class AiInferenceTest {
     @Disabled // TODO enable test
     fun `text inference and validation`(prompt: String) {
         val input = GtvObjectMapper.toGtvDictionary(Request(prompt, messages = null))
-        val output = engine.compute(input)
+        val (output, points) = engine.compute(input)
         engine.validate(output)
     }
 
@@ -98,7 +103,7 @@ class AiInferenceTest {
         val input = GtvObjectMapper.toGtvDictionary(Request(prompt = null, messages = listOf(
                 net.postchain.gtx.extensions.ai_inference.rell.lib.ai_inference.ChatMessage(role = "user", message = prompt)
         )))
-        val output = engine.compute(input)
+        val (output, points) = engine.compute(input)
         engine.validate(output)
     }
 

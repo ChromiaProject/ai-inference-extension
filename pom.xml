@@ -26,7 +26,7 @@
         <kotlin.code.style>obsolete</kotlin.code.style> <!-- Kotlin obsolete IntelliJ IDEA codestyle -->
 
         <postchain.version>3.37.4</postchain.version>
-        <postchain.chromia.version>3.30.6</postchain.chromia.version>
+        <postchain.chromia.version>3.31.0</postchain.chromia.version>
 
         <rell.maven.plugin.version>0.14.1</rell.maven.plugin.version>
 
@@ -132,6 +132,11 @@
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito.kotlin</groupId>
+            <artifactId>mockito-kotlin</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -264,7 +269,7 @@
                 <configuration>
                     <allowInsecureRegistries>false</allowInsecureRegistries>
                     <from>
-                        <image>registry.gitlab.com/chromaway/postchain-chromia/chromaway/chromia-subnode:3.30.6@sha256:4de82cee91ed5591a1b8ad33e4d555d5e67172817630e3bc1269d09c9a624dba</image>
+                        <image>registry.gitlab.com/chromaway/postchain-chromia/chromaway/chromia-subnode:3.31.0@sha256:aa6fdbb1d777b20e833a8f900ae33290c3d227b1f4ee12a03142bca03b43d73b</image>
                     </from>
                     <to>
                         <image>${image.name}</image>
