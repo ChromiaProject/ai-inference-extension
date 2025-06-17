@@ -20,9 +20,6 @@ import org.mockito.kotlin.any
 import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.mock
 
-const val URL = "http://localhost:5000" // TODO test URL
-const val MODEL = "the-model" // TODO test model
-
 class AiInferenceTest {
     companion object : KLogging() {
         lateinit var engine: AiInferenceComputeEngine
@@ -30,9 +27,12 @@ class AiInferenceTest {
         @BeforeAll
         @JvmStatic
         fun setup() {
+            val url = System.getenv("AI_SERVICE_URL") ?: throw IllegalArgumentException("AI_SERVICE_URL environment variable not set")
+            val model = System.getenv("AI_SERVICE_MODEL") ?: throw IllegalArgumentException("AI_SERVICE_MODEL environment variable not set")
+
             engine = AiInferenceComputeEngine()
             val blockchainConfig = AiInferenceConfig(
-                    model = MODEL,
+                    model = model,
                     timeoutSeconds = 10L,
                     maxCompletionTokens = 100L,
             )
@@ -40,7 +40,7 @@ class AiInferenceTest {
                 on { rawConfig } doReturn gtv(mapOf(AiInferenceComputeEngine.NAME to GtvObjectMapper.toGtvDictionary(blockchainConfig)))
             }
             val mockAppConfig = mock<AppConfig> {
-                on { getEnvOrString(any(), any()) } doReturn URL
+                on { getEnvOrString(any(), any()) } doReturn url
             }
             val postchainContext = mock<PostchainContext> {
                 on { appConfig } doReturn mockAppConfig
@@ -98,7 +98,6 @@ class AiInferenceTest {
         "What is Kotlin used for?",
         "What is the capital of France?",
         "Translate 'hello' to French:"])
-    @Disabled // TODO enable test
     fun `chat inference and validation`(prompt: String) {
         val input = GtvObjectMapper.toGtvDictionary(Request(prompt = null, messages = listOf(
                 net.postchain.gtx.extensions.ai_inference.rell.lib.ai_inference.ChatMessage(role = "user", message = prompt)
@@ -108,7 +107,6 @@ class AiInferenceTest {
     }
 
     @Test
-    @Disabled // TODO enable test
     fun `negative validation`() {
         assertFailure {
             val invalidOutput = GtvObjectMapper.toGtvDictionary(Response(
