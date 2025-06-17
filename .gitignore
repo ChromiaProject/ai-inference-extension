@@ -18,6 +18,9 @@ logs
 rell/src/lib/hybridcompute
 rell/build
 rell/logs
+example/src/lib
+example/build
+example/logs
 
 build
 .flattened-pom.xml
