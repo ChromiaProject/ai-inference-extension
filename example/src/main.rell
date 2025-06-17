@@ -9,7 +9,7 @@ operation submit_inference_request(id: text, prompt: text) {
 
 // TODO should have authentication for this operation
 operation submit_chat_inference_request(id: text, prompt: text) {
-    ai.submit_chat_inference_request(id, [ai.chat_message(role="user", message="prompt")]);
+    ai.submit_chat_inference_request(id, [ai.chat_message(role="user", message=prompt)]);
 }
 
 query fetch_inference_result(id: text): ai.inference_result? = ai.fetch_inference_result(id);

@@ -21,7 +21,7 @@ config:
   hybridcompute:
     engine: "net.postchain.gtx.extensions.ai_inference.AiInferenceComputeEngine"
   ai_inference:
-    model: "your-model-name" # Specify model name here
+    model: "your-model-name" # TODO Specify model name here
     timeout_seconds: 600 # Timeout in seconds for each inference and validation
     max_completion_tokens: 100 # An upper bound for the number of tokens that can be generated for a completion,
     # including visible output tokens and reasoning tokens.
@@ -129,7 +129,7 @@ operation submit_inference_request(id: text, prompt: text) {
 
 // TODO should have authentication for this operation
 operation submit_chat_inference_request(id: text, prompt: text) {
-    ai.submit_chat_inference_request(id, [ai.chat_message(role="user", message="prompt")]);
+    ai.submit_chat_inference_request(id, [ai.chat_message(role="user", message=prompt)]);
 }
 
 query fetch_inference_result(id: text): ai.inference_result? = ai.fetch_inference_result(id);

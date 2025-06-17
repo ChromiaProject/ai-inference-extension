@@ -10,7 +10,7 @@ blockchains:
       hybridcompute:
         engine: "net.postchain.gtx.extensions.ai_inference.AiInferenceComputeEngine"
       ai_inference:
-        model: "your-model-name" # Specify model name here
+        model: "your-model-name" # TODO Specify model name here
         timeout_seconds: 600
         max_completion_tokens: 100
 compile:
