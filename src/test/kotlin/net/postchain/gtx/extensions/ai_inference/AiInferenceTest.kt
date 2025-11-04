@@ -16,7 +16,6 @@ import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
-import org.mockito.kotlin.any
 import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.mock
 
@@ -27,7 +26,6 @@ class AiInferenceTest {
         @BeforeAll
         @JvmStatic
         fun setup() {
-            val url = System.getenv("AI_SERVICE_URL") ?: throw IllegalArgumentException("AI_SERVICE_URL environment variable not set")
             val model = System.getenv("AI_SERVICE_MODEL") ?: throw IllegalArgumentException("AI_SERVICE_MODEL environment variable not set")
 
             engine = AiInferenceComputeEngine()
@@ -39,11 +37,8 @@ class AiInferenceTest {
             val configuration = mock<BlockchainConfiguration> {
                 on { rawConfig } doReturn gtv(mapOf(AiInferenceComputeEngine.NAME to GtvObjectMapper.toGtvDictionary(blockchainConfig)))
             }
-            val mockAppConfig = mock<AppConfig> {
-                on { getEnvOrString(any(), any()) } doReturn url
-            }
             val postchainContext = mock<PostchainContext> {
-                on { appConfig } doReturn mockAppConfig
+                on { appConfig } doReturn AppConfig.fromEnvironment()
             }
             engine.initializeContext(configuration, postchainContext)
             engine.load()
@@ -84,7 +79,6 @@ class AiInferenceTest {
         "What is Kotlin used for?",
         "What is the capital of France?",
         "Translate 'hello' to French:"])
-    @Disabled // TODO enable test
     fun `text inference and validation`(prompt: String) {
         val input = GtvObjectMapper.toGtvDictionary(Request(prompt, messages = null))
         val (output, points) = engine.compute(input)
