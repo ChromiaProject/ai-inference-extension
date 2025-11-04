@@ -17,12 +17,11 @@ include:
     when: always
     paths:
       - "**/*.log"
-    expire_in: 1 week
     reports:
       junit:
        - "target/surefire-reports/TEST-*.xml"
        - "target/failsafe-reports/TEST-*.xml"
-      expire_in: 1 week
+    expire_in: 1 week
 
 .setup_with_postgres:
   extends:
