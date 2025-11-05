@@ -74,6 +74,7 @@ class AiInferenceTest {
 
     @ParameterizedTest
     @ValueSource(strings = [
+        "Hello, world! My name is",
         "Hello, how are you?",
         "How is the weather in Stockholm?",
         "What is Kotlin used for?",
@@ -87,6 +88,7 @@ class AiInferenceTest {
 
     @ParameterizedTest
     @ValueSource(strings = [
+        "Hello, world! My name is",
         "Hello, how are you?",
         "How is the weather in Stockholm?",
         "What is Kotlin used for?",
