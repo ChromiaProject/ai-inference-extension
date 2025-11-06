@@ -2,9 +2,7 @@
 
 This extension uses the Hybrid Compute framework.
 
-## Custom subnode image
-
-Ensure you pick the AI extension image when leasing your container.
+You can either use the AI extension image when leasing your container or add the JAR extension to your container. 
 
 ## Blockchain configuration
 
