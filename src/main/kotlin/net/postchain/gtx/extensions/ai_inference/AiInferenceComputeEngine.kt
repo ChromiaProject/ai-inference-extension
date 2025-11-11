@@ -6,6 +6,7 @@ import net.postchain.common.exception.ProgrammerMistake
 import net.postchain.common.exception.UserMistake
 import net.postchain.config.app.AppConfig
 import net.postchain.core.BlockchainConfiguration
+import net.postchain.core.EContext
 import net.postchain.gtv.Gtv
 import net.postchain.gtv.mapper.DefaultValue
 import net.postchain.gtv.mapper.GtvObjectMapper
@@ -90,7 +91,7 @@ class AiInferenceComputeEngine : HybridComputeEngine, PostchainContextAware {
     internal lateinit var config: AiInferenceConfig
     internal lateinit var client: HttpHandler
 
-    override fun initializeContext(configuration: BlockchainConfiguration, postchainContext: PostchainContext) {
+    override fun initializeContext(configuration: BlockchainConfiguration, postchainContext: PostchainContext, ctx: EContext) {
         nodeConfig = AiInferenceNodeConfig.fromAppConfig(postchainContext.appConfig)
         config = configuration.rawConfig.asDict()[NAME]?.toObject<AiInferenceConfig>()
                 ?: throw UserMistake("$NAME configuration not found")
