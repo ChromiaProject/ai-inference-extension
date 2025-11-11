@@ -7,6 +7,7 @@ import net.postchain.PostchainContext
 import net.postchain.common.exception.UserMistake
 import net.postchain.config.app.AppConfig
 import net.postchain.core.BlockchainConfiguration
+import net.postchain.core.EContext
 import net.postchain.gtv.GtvFactory.gtv
 import net.postchain.gtv.mapper.GtvObjectMapper
 import net.postchain.gtx.extensions.ai_inference.rell.lib.ai_inference.Request
@@ -40,7 +41,8 @@ class AiInferenceIT {
             val postchainContext = mock<PostchainContext> {
                 on { appConfig } doReturn AppConfig.fromEnvironment()
             }
-            engine.initializeContext(configuration, postchainContext)
+            val ctx = mock<EContext>()
+            engine.initializeContext(configuration, postchainContext, ctx)
             engine.load()
         }
     }
