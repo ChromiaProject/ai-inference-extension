@@ -34,14 +34,14 @@ libs:
   hybridcompute:
     registry: https://gitlab.com/chromaway/postchain-chromia
     path: chromia-infrastructure/rell/src/lib/hybridcompute
-    tagOrBranch: 3.34.14
-    rid: x"7F4921AB6D1D7FB4CE1B415A011CB8327C39D9F6BFDA95FCDCF31954BECCA4EB"
+    tagOrBranch: 3.35.1
+    rid: x"254AA454D34E882555A55DC74592A98FA944A30CCAD94F51C66A046DDF5A64E6"
     insecure: false
   ai_inference:
     registry: https://gitlab.com/chromaway/core/ai-inference-extension
     path: rell/src/lib/ai_inference
-    tagOrBranch: 0.2.0
-    rid: x"0AA58FFDD9EB238AD1CC60A16798E0E7D57DA883C50BD4EF35F9F0BE31CF0A51"
+    tagOrBranch: ${VERSION}
+    rid: ${RID}
     insecure: false
 ```
 

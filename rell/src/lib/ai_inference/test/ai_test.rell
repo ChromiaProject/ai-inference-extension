@@ -6,17 +6,18 @@ import hc: ^^^.hybridcompute;
 import hch: ^^^.hybridcompute.test.helpers;
 
 function test_text_inference_success() {
+    val prompt = "ABCD";
     rell.test.tx().op(
-        submit_inference_request_op("one", "ABCD")
+        submit_inference_request_op("one", prompt)
     ).run();
     assert_null(fetch_inference_result("one"));
     assert_equals(result.id, "");
 
     rell.test.tx().op(
-        hch.request_taken_op("one", x"")
+        hch.request_taken_op("one", type, x"")
     ).run();
     rell.test.tx().op(
-        hch.response_op("one", "ai_inference", response(prompt_tokens=[1, 2, 3, 4], text_tokens=[5, 6, 7], text="ABCD 1234").to_gtv_pretty())
+        hch.response_op("one", type, request(prompt, messages = null).to_gtv_pretty(), response(prompt_tokens=[1, 2, 3, 4], text_tokens=[5, 6, 7], text="ABCD 1234").to_gtv_pretty())
     ).run();
     assert_equals(fetch_inference_result("one"), inference_result(result="ABCD 1234", error=null,
         tx_rid=transaction @ { } (@omit @sort_desc .rowid, .tx_rid) limit 1, op_index=0));
@@ -26,17 +27,18 @@ function test_text_inference_success() {
 }
 
 function test_text_inference_failure() {
+    val prompt = "ABCD";
     rell.test.tx().op(
-        submit_inference_request_op("two", "ABCD")
+        submit_inference_request_op("two", prompt)
     ).run();
     assert_null(fetch_inference_result("two"));
     assert_equals(result.id, "");
 
     rell.test.tx().op(
-        hch.request_taken_op("two", x"")
+        hch.request_taken_op("two", type, x"")
     ).run();
     rell.test.tx().op(
-        hch.failure_op("two", "ai_inference", "fel fel fel")
+        hch.failure_op("two", type, request(prompt, messages = null).to_gtv_pretty(), "fel fel fel")
     ).run();
     assert_equals(fetch_inference_result("two"), inference_result(result=null, error="fel fel fel",
         tx_rid=transaction @ { } (@omit @sort_desc .rowid, .tx_rid) limit 1, op_index=0));
@@ -46,17 +48,18 @@ function test_text_inference_failure() {
 }
 
 function test_chat_inference_success() {
+    val messages = [chat_message(role="user", message="ABCD")];
     rell.test.tx().op(
-        submit_chat_inference_request_op("one", [chat_message(role="user", message="ABCD")])
+        submit_chat_inference_request_op("one", messages)
     ).run();
     assert_null(fetch_inference_result("one"));
     assert_equals(result.id, "");
 
     rell.test.tx().op(
-        hch.request_taken_op("one", x"")
+        hch.request_taken_op("one", type, x"")
     ).run();
     rell.test.tx().op(
-        hch.response_op("one", "ai_inference", response(prompt_tokens=[1, 2, 3, 4], text_tokens=[5, 6, 7], text="ABCD 1234").to_gtv_pretty())
+        hch.response_op("one", type, request(prompt = null, messages).to_gtv_pretty(), response(prompt_tokens=[1, 2, 3, 4], text_tokens=[5, 6, 7], text="ABCD 1234").to_gtv_pretty())
     ).run();
     assert_equals(fetch_inference_result("one"), inference_result(result="ABCD 1234", error=null,
         tx_rid=transaction @ { } (@omit @sort_desc .rowid, .tx_rid) limit 1, op_index=0));
@@ -66,17 +69,18 @@ function test_chat_inference_success() {
 }
 
 function test_chat_inference_failure() {
+    val messages = [chat_message(role="user", message="ABCD")];
     rell.test.tx().op(
-        submit_chat_inference_request_op("two", [chat_message(role="user", message="ABCD")])
+        submit_chat_inference_request_op("two", messages)
     ).run();
     assert_null(fetch_inference_result("two"));
     assert_equals(result.id, "");
 
     rell.test.tx().op(
-        hch.request_taken_op("two", x"")
+        hch.request_taken_op("two", type, x"")
     ).run();
     rell.test.tx().op(
-        hch.failure_op("two", "ai_inference", "fel fel fel")
+        hch.failure_op("two", type, request(prompt = null, messages).to_gtv_pretty(), "fel fel fel")
     ).run();
     assert_equals(fetch_inference_result("two"), inference_result(result=null, error="fel fel fel",
         tx_rid=transaction @ { } (@omit @sort_desc .rowid, .tx_rid) limit 1, op_index=0));

@@ -85,7 +85,7 @@ class AiInferenceIT {
     fun `text inference and validation`(prompt: String) {
         val input = GtvObjectMapper.toGtvDictionary(Request(prompt, messages = null))
         val (output, points) = engine.compute(input)
-        engine.validate(output)
+        engine.validate(input, output)
     }
 
     @ParameterizedTest
@@ -101,18 +101,19 @@ class AiInferenceIT {
                 net.postchain.gtx.extensions.ai_inference.rell.lib.ai_inference.ChatMessage(role = "user", message = prompt)
         )))
         val (output, points) = engine.compute(input)
-        engine.validate(output)
+        engine.validate(input, output)
     }
 
     @Test
     fun `negative validation`() {
         assertFailure {
+            val input = GtvObjectMapper.toGtvDictionary(Request("Some prompt", messages = null))
             val invalidOutput = GtvObjectMapper.toGtvDictionary(Response(
                     promptTokens = listOf(1, 9690, 198, 2683, 359, 253, 5356, 5646, 11173, 3365, 3511, 308, 34519, 28, 7018, 411, 407, 19712, 8182, 2, 198, 1, 4093, 198, 1780, 314, 260, 3575, 282, 4649, 47, 2, 198, 1, 520, 9531, 198),
                     textTokens = listOf(504, 3575, 282, 4649, 314, 7042, 30, 3),
                     text = "", // not used
             ))
-            engine.validate(invalidOutput)
+            engine.validate(input, invalidOutput)
         }.isInstanceOf(UserMistake::class.java)
     }
 }

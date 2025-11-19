@@ -209,7 +209,7 @@ class AiInferenceComputeEngine : HybridComputeEngine, PostchainContextAware {
         ) to BASE_REQUEST_COST + response.usage.prompt_tokens + response.usage.completion_tokens * 2
     }
 
-    override fun validate(output: Gtv) {
+    override fun validate(input: Gtv, output: Gtv) {
         val response = output.toObject<Response>()
         verifyTextGeneration(response.promptTokens, response.textTokens)
     }
