@@ -164,7 +164,7 @@ class AiInferenceComputeEngine : HybridComputeEngine, PostchainContextAware {
                 .with(verifiedCompletionRequest of VerifiedCompletionRequest(
                         model = config.model,
                         prompt = prompt,
-                        max_completion_tokens = config.maxCompletionTokens,
+                        max_tokens = config.maxCompletionTokens,
                 )).let { if (nodeConfig.basicAuth != null) it.basicAuthentication(nodeConfig.basicAuth!!) else it })
         if (!httpResponse.status.successful) {
             throw ProgrammerMistake("Failed to generate text: ${httpResponse.status} ${httpResponse.bodyString()}")
