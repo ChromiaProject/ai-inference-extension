@@ -68,13 +68,13 @@ data class AiInferenceConfig(
         @param:Name("model")
         val model: String,
 
-        @param:Name("compute_timeout_seconds")
-        @param:DefaultValue(defaultLong = AiInferenceComputeEngine.DEFAULT_COMPUTE_TIMEOUT_SECONDS.toLong())
-        val computeTimeoutSeconds: Long,
+        @param:Name("inference_timeout_seconds")
+        @param:DefaultValue(defaultLong = AiInferenceComputeEngine.DEFAULT_INFERENCE_TIMEOUT_SECONDS.toLong())
+        val inferenceTimeoutSeconds: Long,
 
-        @param:Name("validate_timeout_seconds")
-        @param:DefaultValue(defaultLong = AiInferenceComputeEngine.DEFAULT_VALIDATE_TIMEOUT_SECONDS.toLong())
-        val validateTimeoutSeconds: Long,
+        @param:Name("verification_timeout_seconds")
+        @param:DefaultValue(defaultLong = AiInferenceComputeEngine.DEFAULT_VERIFICATION_TIMEOUT_SECONDS.toLong())
+        val verificationTimeoutSeconds: Long,
 
         @param:Name("max_completion_tokens")
         val maxCompletionTokens: Long,
@@ -84,8 +84,8 @@ class AiInferenceComputeEngine : HybridComputeEngine, PostchainContextAware {
     companion object : KLogging() {
         const val NAME = "ai_inference"
         const val CONNECT_TIMEOUT_SECONDS = 10
-        const val DEFAULT_COMPUTE_TIMEOUT_SECONDS = 60
-        const val DEFAULT_VALIDATE_TIMEOUT_SECONDS = 10
+        const val DEFAULT_INFERENCE_TIMEOUT_SECONDS = 60
+        const val DEFAULT_VERIFICATION_TIMEOUT_SECONDS = 10
         const val BASE_REQUEST_COST = 1000L
     }
 
@@ -93,8 +93,8 @@ class AiInferenceComputeEngine : HybridComputeEngine, PostchainContextAware {
 
     internal lateinit var nodeConfig: AiInferenceNodeConfig
     internal lateinit var config: AiInferenceConfig
-    internal lateinit var computeClient: HttpHandler
-    internal lateinit var validateClient: HttpHandler
+    internal lateinit var inferenceClient: HttpHandler
+    internal lateinit var verificationClient: HttpHandler
 
     override fun initializeContext(configuration: BlockchainConfiguration, postchainContext: PostchainContext, ctx: EContext) {
         nodeConfig = AiInferenceNodeConfig.fromAppConfig(postchainContext.appConfig)
@@ -103,14 +103,14 @@ class AiInferenceComputeEngine : HybridComputeEngine, PostchainContextAware {
         if (config.model.isBlank()) {
             throw UserMistake("$NAME configuration invalid: no model specified")
         }
-        if (config.computeTimeoutSeconds < 1 || config.computeTimeoutSeconds > Integer.MAX_VALUE) {
-            throw UserMistake("$NAME configuration invalid: compute_timeout_seconds must be between 1 and ${Integer.MAX_VALUE}")
+        if (config.inferenceTimeoutSeconds < 1 || config.inferenceTimeoutSeconds > Integer.MAX_VALUE) {
+            throw UserMistake("$NAME configuration invalid: inference_timeout_seconds must be between 1 and ${Integer.MAX_VALUE}")
         }
-        if (config.validateTimeoutSeconds < 1 || config.validateTimeoutSeconds > Integer.MAX_VALUE) {
-            throw UserMistake("$NAME configuration invalid: validate_timeout_seconds must be between 1 and ${Integer.MAX_VALUE}")
+        if (config.verificationTimeoutSeconds < 1 || config.verificationTimeoutSeconds > Integer.MAX_VALUE) {
+            throw UserMistake("$NAME configuration invalid: verification_timeout_seconds must be between 1 and ${Integer.MAX_VALUE}")
         }
-        computeClient = createClientWithTimeout(Timeout.ofSeconds(config.computeTimeoutSeconds))
-        validateClient = createClientWithTimeout(Timeout.ofSeconds(config.validateTimeoutSeconds))
+        inferenceClient = createClientWithTimeout(Timeout.ofSeconds(config.inferenceTimeoutSeconds))
+        verificationClient = createClientWithTimeout(Timeout.ofSeconds(config.verificationTimeoutSeconds))
     }
 
     private fun createClientWithTimeout(timeout: Timeout): HttpHandler = ClientFilters.AcceptGZip(GzipCompressionMode.Streaming())
@@ -171,7 +171,7 @@ class AiInferenceComputeEngine : HybridComputeEngine, PostchainContextAware {
             config.maxCompletionTokens * 2
 
     fun generateText(prompt: String): Pair<Response, Long> {
-        val httpResponse = computeClient(HttpRequest(Method.POST, "${nodeConfig.url}/v1/completions/verified")
+        val httpResponse = inferenceClient(HttpRequest(Method.POST, "${nodeConfig.url}/v1/completions/verified")
                 .with(verifiedCompletionRequest of VerifiedCompletionRequest(
                         model = config.model,
                         prompt = prompt,
@@ -198,7 +198,7 @@ class AiInferenceComputeEngine : HybridComputeEngine, PostchainContextAware {
             config.maxCompletionTokens * 2
 
     fun generateChat(messages: List<ChatMessage>): Pair<Response, Long> {
-        val httpResponse = computeClient(HttpRequest(Method.POST, "${nodeConfig.url}/v1/chat/completions/verified")
+        val httpResponse = inferenceClient(HttpRequest(Method.POST, "${nodeConfig.url}/v1/chat/completions/verified")
                 .with(verifiedChatCompletionRequest of VerifiedChatCompletionRequest(
                         model = config.model,
                         messages = messages,
@@ -226,7 +226,7 @@ class AiInferenceComputeEngine : HybridComputeEngine, PostchainContextAware {
     }
 
     fun verifyTextGeneration(promptTokens: List<Long>, textTokens: List<Long>) {
-        val httpResponse = validateClient(HttpRequest(Method.POST, "${nodeConfig.url}/v1/verify_decoding")
+        val httpResponse = verificationClient(HttpRequest(Method.POST, "${nodeConfig.url}/v1/verify_decoding")
                 .with(verifyDecodingRequest of VerifyDecodingRequest(
                         model = config.model,
                         prompt = promptTokens,

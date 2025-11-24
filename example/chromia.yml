@@ -11,7 +11,8 @@ blockchains:
         engine: "net.postchain.gtx.extensions.ai_inference.AiInferenceComputeEngine"
       ai_inference:
         model: "your-model-name" # TODO Specify model name here
-        timeout_seconds: 600
+        inference_timeout_seconds: 60
+        verification_timeout_seconds: 10
         max_completion_tokens: 100
 compile:
   rellVersion: 0.14.15
