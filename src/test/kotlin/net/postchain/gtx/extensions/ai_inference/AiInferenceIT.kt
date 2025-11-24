@@ -33,8 +33,8 @@ class AiInferenceIT {
             engine = AiInferenceComputeEngine()
             val blockchainConfig = AiInferenceConfig(
                     model = model,
-                    computeTimeoutSeconds = 10L,
-                    validateTimeoutSeconds = 10L,
+                    inferenceTimeoutSeconds = 10L,
+                    verificationTimeoutSeconds = 10L,
                     maxCompletionTokens = 100L,
             )
             val configuration = mock<BlockchainConfiguration> {

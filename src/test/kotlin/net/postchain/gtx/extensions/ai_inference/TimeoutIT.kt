@@ -76,8 +76,8 @@ class TimeoutIT {
         val engine = AiInferenceComputeEngine()
         val blockchainConfig = AiInferenceConfig(
                 model = "no-model",
-                computeTimeoutSeconds = 5L,
-                validateTimeoutSeconds = 5L,
+                inferenceTimeoutSeconds = 5L,
+                verificationTimeoutSeconds = 5L,
                 maxCompletionTokens = 0L,
         )
         val configuration = mock<BlockchainConfiguration> {
