@@ -65,14 +65,18 @@ data class AiInferenceNodeConfig(
 }
 
 data class AiInferenceConfig(
-        @Name("model")
+        @param:Name("model")
         val model: String,
 
-        @Name("timeout_seconds")
-        @DefaultValue(defaultLong = AiInferenceComputeEngine.DEFAULT_TIMEOUT_SECONDS.toLong())
-        val timeoutSeconds: Long,
+        @param:Name("compute_timeout_seconds")
+        @param:DefaultValue(defaultLong = AiInferenceComputeEngine.DEFAULT_COMPUTE_TIMEOUT_SECONDS.toLong())
+        val computeTimeoutSeconds: Long,
 
-        @Name("max_completion_tokens")
+        @param:Name("validate_timeout_seconds")
+        @param:DefaultValue(defaultLong = AiInferenceComputeEngine.DEFAULT_VALIDATE_TIMEOUT_SECONDS.toLong())
+        val validateTimeoutSeconds: Long,
+
+        @param:Name("max_completion_tokens")
         val maxCompletionTokens: Long,
 )
 
@@ -80,8 +84,8 @@ class AiInferenceComputeEngine : HybridComputeEngine, PostchainContextAware {
     companion object : KLogging() {
         const val NAME = "ai_inference"
         const val CONNECT_TIMEOUT_SECONDS = 10
-        const val DEFAULT_TIMEOUT_SECONDS = 60
-
+        const val DEFAULT_COMPUTE_TIMEOUT_SECONDS = 60
+        const val DEFAULT_VALIDATE_TIMEOUT_SECONDS = 10
         const val BASE_REQUEST_COST = 1000L
     }
 
@@ -89,7 +93,8 @@ class AiInferenceComputeEngine : HybridComputeEngine, PostchainContextAware {
 
     internal lateinit var nodeConfig: AiInferenceNodeConfig
     internal lateinit var config: AiInferenceConfig
-    internal lateinit var client: HttpHandler
+    internal lateinit var computeClient: HttpHandler
+    internal lateinit var validateClient: HttpHandler
 
     override fun initializeContext(configuration: BlockchainConfiguration, postchainContext: PostchainContext, ctx: EContext) {
         nodeConfig = AiInferenceNodeConfig.fromAppConfig(postchainContext.appConfig)
@@ -98,34 +103,40 @@ class AiInferenceComputeEngine : HybridComputeEngine, PostchainContextAware {
         if (config.model.isBlank()) {
             throw UserMistake("$NAME configuration invalid: no model specified")
         }
-        if (config.timeoutSeconds < 1 || config.timeoutSeconds > Integer.MAX_VALUE) {
-            throw UserMistake("$NAME configuration invalid: timeout_seconds must be between 1 and ${Integer.MAX_VALUE}")
+        if (config.computeTimeoutSeconds < 1 || config.computeTimeoutSeconds > Integer.MAX_VALUE) {
+            throw UserMistake("$NAME configuration invalid: compute_timeout_seconds must be between 1 and ${Integer.MAX_VALUE}")
         }
-        client = ClientFilters.AcceptGZip(GzipCompressionMode.Streaming())
-                .then(
-                        ClientFilters.RequestTracing(
-                                startReportFn = { request, _ ->
-                                    logger.debug { "\n$request" }
-                                },
-                                endReportFn = { _, response, _ ->
-                                    logger.debug { "\n$response" }
-                                }
-                        ).then(
-                                ApacheClient(HttpClients.custom()
-                                        .setConnectionManager(PoolingHttpClientConnectionManagerBuilder.create()
-                                                .setDefaultConnectionConfig(ConnectionConfig.custom()
-                                                        .setConnectTimeout(Timeout.ofSeconds(CONNECT_TIMEOUT_SECONDS.toLong()))
-                                                        .build())
-                                                .build())
-                                        .setDefaultRequestConfig(
-                                                RequestConfig.custom()
-                                                        .setRedirectsEnabled(false)
-                                                        .setCookieSpec(StandardCookieSpec.IGNORE)
-                                                        .setResponseTimeout(Timeout.ofSeconds(config.timeoutSeconds))
-                                                        .build())
-                                        .build())
-                        ))
+        if (config.validateTimeoutSeconds < 1 || config.validateTimeoutSeconds > Integer.MAX_VALUE) {
+            throw UserMistake("$NAME configuration invalid: validate_timeout_seconds must be between 1 and ${Integer.MAX_VALUE}")
+        }
+        computeClient = createClientWithTimeout(Timeout.ofSeconds(config.computeTimeoutSeconds))
+        validateClient = createClientWithTimeout(Timeout.ofSeconds(config.validateTimeoutSeconds))
     }
+
+    private fun createClientWithTimeout(timeout: Timeout): HttpHandler = ClientFilters.AcceptGZip(GzipCompressionMode.Streaming())
+            .then(
+                    ClientFilters.RequestTracing(
+                            startReportFn = { request, _ ->
+                                logger.debug { "\n$request" }
+                            },
+                            endReportFn = { _, response, _ ->
+                                logger.debug { "\n$response" }
+                            }
+                    ).then(
+                            ApacheClient(HttpClients.custom()
+                                    .setConnectionManager(PoolingHttpClientConnectionManagerBuilder.create()
+                                            .setDefaultConnectionConfig(ConnectionConfig.custom()
+                                                    .setConnectTimeout(Timeout.ofSeconds(CONNECT_TIMEOUT_SECONDS.toLong()))
+                                                    .build())
+                                            .build())
+                                    .setDefaultRequestConfig(
+                                            RequestConfig.custom()
+                                                    .setRedirectsEnabled(false)
+                                                    .setCookieSpec(StandardCookieSpec.IGNORE)
+                                                    .setResponseTimeout(timeout)
+                                                    .build())
+                                    .build())
+                    ))
 
     override fun load() {
         // nothing to do here
@@ -160,7 +171,7 @@ class AiInferenceComputeEngine : HybridComputeEngine, PostchainContextAware {
             config.maxCompletionTokens * 2
 
     fun generateText(prompt: String): Pair<Response, Long> {
-        val httpResponse = client(HttpRequest(Method.POST, "${nodeConfig.url}/v1/completions/verified")
+        val httpResponse = computeClient(HttpRequest(Method.POST, "${nodeConfig.url}/v1/completions/verified")
                 .with(verifiedCompletionRequest of VerifiedCompletionRequest(
                         model = config.model,
                         prompt = prompt,
@@ -187,7 +198,7 @@ class AiInferenceComputeEngine : HybridComputeEngine, PostchainContextAware {
             config.maxCompletionTokens * 2
 
     fun generateChat(messages: List<ChatMessage>): Pair<Response, Long> {
-        val httpResponse = client(HttpRequest(Method.POST, "${nodeConfig.url}/v1/chat/completions/verified")
+        val httpResponse = computeClient(HttpRequest(Method.POST, "${nodeConfig.url}/v1/chat/completions/verified")
                 .with(verifiedChatCompletionRequest of VerifiedChatCompletionRequest(
                         model = config.model,
                         messages = messages,
@@ -215,7 +226,7 @@ class AiInferenceComputeEngine : HybridComputeEngine, PostchainContextAware {
     }
 
     fun verifyTextGeneration(promptTokens: List<Long>, textTokens: List<Long>) {
-        val httpResponse = client(HttpRequest(Method.POST, "${nodeConfig.url}/v1/verify_decoding")
+        val httpResponse = validateClient(HttpRequest(Method.POST, "${nodeConfig.url}/v1/verify_decoding")
                 .with(verifyDecodingRequest of VerifyDecodingRequest(
                         model = config.model,
                         prompt = promptTokens,

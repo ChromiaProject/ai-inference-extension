@@ -27,12 +27,14 @@ class AiInferenceIT {
         @BeforeAll
         @JvmStatic
         fun setup() {
-            val model = System.getenv("AI_SERVICE_MODEL") ?: throw IllegalArgumentException("AI_SERVICE_MODEL environment variable not set")
+            val model = System.getenv("AI_SERVICE_MODEL")
+                    ?: throw IllegalArgumentException("AI_SERVICE_MODEL environment variable not set")
 
             engine = AiInferenceComputeEngine()
             val blockchainConfig = AiInferenceConfig(
                     model = model,
-                    timeoutSeconds = 10L,
+                    computeTimeoutSeconds = 10L,
+                    validateTimeoutSeconds = 10L,
                     maxCompletionTokens = 100L,
             )
             val configuration = mock<BlockchainConfiguration> {
