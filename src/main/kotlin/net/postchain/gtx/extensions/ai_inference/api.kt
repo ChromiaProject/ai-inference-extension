@@ -22,10 +22,9 @@ data class VerifiedCompletionRequest(
         val prompt: String,
 
         /**
-         * An upper bound for the number of tokens that can be generated for a completion,
-         * including visible output tokens and reasoning tokens.
+         * The maximum number of tokens that can be generated in the completion.
          */
-        val max_completion_tokens: Long? = null,
+        val max_tokens: Long? = null,
 )
 
 data class VerifiedCompletionResponse(
