@@ -12,7 +12,6 @@ import net.postchain.gtv.GtvFactory.gtv
 import net.postchain.gtv.mapper.GtvObjectMapper
 import net.postchain.gtx.extensions.ai_inference.rell.lib.ai_inference.Request
 import net.postchain.gtx.extensions.ai_inference.rell.lib.ai_inference.Response
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Timeout
 import org.mockito.kotlin.doReturn
@@ -25,12 +24,12 @@ import java.util.concurrent.TimeUnit
 class TimeoutIT {
     companion object : KLogging()
 
+    val unroutableInternetUrl = "http://10.255.255.1:1"
+
     @Test
-    @Disabled // for manual testing
-    @Timeout(10, unit = TimeUnit.SECONDS)
+    @Timeout(15, unit = TimeUnit.SECONDS)
     fun `connect timeout`() {
-        val url = "http://example.com:1234"
-        val engine = createEngine(url)
+        val engine = createEngine(unroutableInternetUrl)
         assertFailure {
             engine.compute(GtvObjectMapper.toGtvDictionary(Request(prompt = "hello", messages = null)))
         }.isInstanceOf(ProgrammerMistake::class)
