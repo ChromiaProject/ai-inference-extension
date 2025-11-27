@@ -32,18 +32,10 @@ Install the Rell libraries:
 
 ```yaml
 libs:
-  hybridcompute:
-    registry: https://gitlab.com/chromaway/postchain-chromia
-    path: chromia-infrastructure/rell/src/lib/hybridcompute
-    tagOrBranch: 3.35.6
-    rid: x"E1496FC9A2DC89353A06F5BA79CF94F2B92BAC1B9291F10EF45B739DFC977712"
-    insecure: false
-  ai_inference:
-    registry: https://gitlab.com/chromaway/core/ai-inference-extension
-    path: rell/src/lib/ai_inference
-    tagOrBranch: ${VERSION}
-    rid: ${RID}
-    insecure: false
+  com.chromia.hybridcompute:
+    version: 3.35.3
+  com.chromia.ai_inference:
+    version: ${VERSION}
 ```
 
 Import the module:

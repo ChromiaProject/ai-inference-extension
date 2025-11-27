@@ -2,7 +2,7 @@ image: registry.gitlab.com/chromaway/core-tools/chromia-images/maven-docker-java
 
 include:
   - project: "chromaway/core-infra/gitlab-automation"
-    ref: 1.2.0
+    ref: 1.3.3
     file:
       - templates/release.yml
       - templates/maven-dependency-scanning.yml
@@ -43,6 +43,19 @@ stages:
   - dependency-check
   - release
 
+build:
+  extends:
+    - .setup_with_postgres
+  stage: build
+  interruptible: true
+  except:
+    refs:
+      - tags
+  script:
+    - mvn
+      $MAVEN_CLI_OPTS
+      verify
+
 deploy-snapshot:
   extends: .setup
   stage: deploy
@@ -76,18 +89,20 @@ deploy:
       --activate-profiles docker-push
       clean source:jar deploy
 
-build:
-  extends:
-    - .setup_with_postgres
-  stage: build
-  interruptible: true
-  except:
-    refs:
-      - tags
+deploy_library_chain:
+  image: registry.gitlab.com/chromaway/core-tools/chromia-cli/chr:0.29.2
+  stage: deploy
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^[0-9]+\.[0-9]+\.[0-9]+$/
+  variables:
+    POSTCHAIN_CLIENT_PUBKEY: "${LIBRARY_CHAIN_PUBLIC_KEY}"
+    POSTCHAIN_CLIENT_PRIVKEY: ${LIBRARY_CHAIN_PRIVATE_KEY}
   script:
-    - mvn
-      $MAVEN_CLI_OPTS
-      verify
+    - apk add curl jq libxml2-utils
+    - cd rell
+    - chr install
+    - chr build
+    - ../ci/library_chain/deploy.sh -n ai_inference --major 0 --minor 3 --library-description "AI inference extension"
 
 dependency-check:
   extends: .maven-dependency-check
@@ -95,6 +110,15 @@ dependency-check:
   interruptible: true
   rules:
     - if: $RUN_DEPENDENCY_CHECK == "true"
+
+gitlab-release:
+  extends: .gitlab-release-with-notes
+  script:
+    - echo "Running the release job."
+  release:
+    name: 'AI inference extension $CI_COMMIT_TAG'
+    description: release_notes.md
+    tag_name: '$CI_COMMIT_TAG'
 
 container-scanning:
   variables:
