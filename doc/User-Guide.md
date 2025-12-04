@@ -33,7 +33,7 @@ Install the Rell libraries:
 ```yaml
 libs:
   com.chromia.hybridcompute:
-    version: 3.35.3
+    version: 3.35.4
   com.chromia.ai_inference:
     version: ${VERSION}
 ```
