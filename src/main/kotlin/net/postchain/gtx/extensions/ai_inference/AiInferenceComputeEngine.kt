@@ -2,6 +2,11 @@ package net.postchain.gtx.extensions.ai_inference
 
 import mu.KLogging
 import net.postchain.PostchainContext
+import net.postchain.client.config.PostchainClientConfig
+import net.postchain.client.impl.TryNextOnErrorRequestStrategy
+import net.postchain.client.request.EndpointPool
+import net.postchain.client.request.RequestStrategy
+import net.postchain.common.BlockchainRid
 import net.postchain.common.exception.ProgrammerMistake
 import net.postchain.common.exception.UserMistake
 import net.postchain.config.app.AppConfig
@@ -94,7 +99,9 @@ class AiInferenceComputeEngine : HybridComputeEngine, PostchainContextAware {
     internal lateinit var nodeConfig: AiInferenceNodeConfig
     internal lateinit var config: AiInferenceConfig
     internal lateinit var inferenceClient: HttpHandler
+    internal lateinit var inferenceRequestStrategy: RequestStrategy
     internal lateinit var verificationClient: HttpHandler
+    internal lateinit var verificationRequestStrategy: RequestStrategy
 
     override fun initializeContext(configuration: BlockchainConfiguration, postchainContext: PostchainContext, ctx: EContext) {
         nodeConfig = AiInferenceNodeConfig.fromAppConfig(postchainContext.appConfig)
@@ -110,7 +117,12 @@ class AiInferenceComputeEngine : HybridComputeEngine, PostchainContextAware {
             throw UserMistake("$NAME configuration invalid: verification_timeout_seconds must be between 1 and ${Integer.MAX_VALUE}")
         }
         inferenceClient = createClientWithTimeout(Timeout.ofSeconds(config.inferenceTimeoutSeconds))
+        val urls = nodeConfig.url.split(",")
+        inferenceRequestStrategy = TryNextOnErrorRequestStrategy(PostchainClientConfig(BlockchainRid.ZERO_RID,
+                EndpointPool.default(urls)), inferenceClient)
         verificationClient = createClientWithTimeout(Timeout.ofSeconds(config.verificationTimeoutSeconds))
+        verificationRequestStrategy = TryNextOnErrorRequestStrategy(PostchainClientConfig(BlockchainRid.ZERO_RID,
+                EndpointPool.default(urls)), verificationClient)
     }
 
     private fun createClientWithTimeout(timeout: Timeout): HttpHandler = ClientFilters.AcceptGZip(GzipCompressionMode.Streaming())
@@ -170,63 +182,64 @@ class AiInferenceComputeEngine : HybridComputeEngine, PostchainContextAware {
             prompt.length +
             config.maxCompletionTokens * 2
 
-    fun generateText(prompt: String): Pair<Response, Long> {
-        val httpResponse = inferenceClient(HttpRequest(Method.POST, "${nodeConfig.url}/v1/completions/verified")
+    fun generateText(prompt: String): Pair<Response, Long> = inferenceRequestStrategy.request({ endpoint ->
+        HttpRequest(Method.POST, "${endpoint.url}/v1/completions/verified")
                 .with(verifiedCompletionRequest of VerifiedCompletionRequest(
                         model = config.model,
                         prompt = prompt,
                         max_tokens = config.maxCompletionTokens,
-                )).let { if (nodeConfig.basicAuth != null) it.basicAuthentication(nodeConfig.basicAuth!!) else it })
-        if (!httpResponse.status.successful) {
-            throw ProgrammerMistake("Failed to generate text: ${httpResponse.status} ${httpResponse.bodyString()}")
-        }
+                )).let { if (nodeConfig.basicAuth != null) it.basicAuthentication(nodeConfig.basicAuth!!) else it }
+    }, { httpResponse, endpoint ->
         val response = verifiedCompletionResponse(httpResponse)
         val choice = response.choices.firstOrNull() ?: throw UserMistake("No choices found in response")
         if (response.choices.size > 1) {
             logger.warn("More than one (${response.choices.size}) choice found in response. Using first one.")
         }
-        logger.info("Generated id ${response.id} at ${response.created} with model ${response.model} with finish reason ${choice.finish_reason}")
-        return Response(
+        logger.info("Generated id ${response.id} at ${response.created} with model ${response.model} with finish reason ${choice.finish_reason} from ${endpoint.url}")
+        Response(
                 promptTokens = choice.prompt_token_ids,
                 textTokens = choice.completion_token_ids,
                 text = choice.text,
         ) to BASE_REQUEST_COST + response.usage.prompt_tokens + response.usage.completion_tokens * 2
-    }
+    }, { httpResponse, _ ->
+        throw ProgrammerMistake("Failed to generate text: ${httpResponse.status} ${httpResponse.bodyString()}")
+    }, false)
 
     fun estimateChat(messages: List<ChatMessage>): Long = BASE_REQUEST_COST +
             messages.sumOf { it.role.length + it.content.length } +
             config.maxCompletionTokens * 2
 
-    fun generateChat(messages: List<ChatMessage>): Pair<Response, Long> {
-        val httpResponse = inferenceClient(HttpRequest(Method.POST, "${nodeConfig.url}/v1/chat/completions/verified")
+    fun generateChat(messages: List<ChatMessage>): Pair<Response, Long> = inferenceRequestStrategy.request({ endpoint ->
+        HttpRequest(Method.POST, "${endpoint.url}/v1/chat/completions/verified")
                 .with(verifiedChatCompletionRequest of VerifiedChatCompletionRequest(
                         model = config.model,
                         messages = messages,
                         max_completion_tokens = config.maxCompletionTokens,
-                )).let { if (nodeConfig.basicAuth != null) it.basicAuthentication(nodeConfig.basicAuth!!) else it })
-        if (!httpResponse.status.successful) {
-            throw ProgrammerMistake("Failed to generate chat: ${httpResponse.status} ${httpResponse.bodyString()}")
-        }
+                )).let { if (nodeConfig.basicAuth != null) it.basicAuthentication(nodeConfig.basicAuth!!) else it }
+    }, { httpResponse, endpoint ->
         val response = verifiedChatCompletionResponse(httpResponse)
         val choice = response.choices.firstOrNull() ?: throw UserMistake("No choices found in chat response")
         if (response.choices.size > 1) {
             logger.warn("More than one (${response.choices.size}) choice found in chat response. Using first one.")
         }
-        logger.info("Generated chat id ${response.id} at ${response.created} with model ${response.model} with finish reason ${choice.finish_reason}")
-        return Response(
+        logger.info("Generated chat id ${response.id} at ${response.created} with model ${response.model} with finish reason ${choice.finish_reason} from ${endpoint.url}")
+        Response(
                 promptTokens = choice.prompt_token_ids,
                 textTokens = choice.completion_token_ids,
                 text = choice.message.content,
         ) to BASE_REQUEST_COST + response.usage.prompt_tokens + response.usage.completion_tokens * 2
-    }
+
+    }, { httpResponse, _ ->
+        throw ProgrammerMistake("Failed to generate chat: ${httpResponse.status} ${httpResponse.bodyString()}")
+    }, false)
 
     override fun validate(input: Gtv, output: Gtv) {
         val response = output.toObject<Response>()
         verifyTextGeneration(response.promptTokens, response.textTokens)
     }
 
-    fun verifyTextGeneration(promptTokens: List<Long>, textTokens: List<Long>) {
-        val httpResponse = verificationClient(HttpRequest(Method.POST, "${nodeConfig.url}/v1/verify_decoding")
+    fun verifyTextGeneration(promptTokens: List<Long>, textTokens: List<Long>) = verificationRequestStrategy.request({ endpoint ->
+        HttpRequest(Method.POST, "${endpoint.url}/v1/verify_decoding")
                 .with(verifyDecodingRequest of VerifyDecodingRequest(
                         model = config.model,
                         prompt = promptTokens,
@@ -234,14 +247,16 @@ class AiInferenceComputeEngine : HybridComputeEngine, PostchainContextAware {
                         prompt_logprobs = 0,
                         check_greedy = true,
                         greedy_logprob_threshold = 0.001,
-                )).let { if (nodeConfig.basicAuth != null) it.basicAuthentication(nodeConfig.basicAuth!!) else it })
-        if (!httpResponse.status.successful) {
-            throw ProgrammerMistake("Failed to verify text: ${httpResponse.status} ${httpResponse.bodyString()}")
-        }
+                )).let { if (nodeConfig.basicAuth != null) it.basicAuthentication(nodeConfig.basicAuth!!) else it }
+    }, { httpResponse, endpoint ->
         val response = verifyDecodingResponse(httpResponse)
-        logger.info("Verified id ${response.id} at ${response.created} with model ${response.model} is_verified_greedy=${response.is_verified_greedy}")
+        logger.info("Verified id ${response.id} at ${response.created} with model ${response.model} is_verified_greedy=${response.is_verified_greedy} from ${endpoint.url}")
         if (!response.is_verified_greedy) {
             throw UserMistake("Generated text does not match")
         }
-    }
+    }, { httpResponse, _ ->
+        if (!httpResponse.status.successful) {
+            throw ProgrammerMistake("Failed to verify text: ${httpResponse.status} ${httpResponse.bodyString()}")
+        }
+    }, false)
 }

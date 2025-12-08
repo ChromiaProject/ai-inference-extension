@@ -27,6 +27,7 @@
 
         <postchain.version>3.47.1</postchain.version>
         <postchain.chromia.version>3.36.3</postchain.chromia.version>
+        <postchain.client.version>3.38.0</postchain.client.version>
 
         <rell.maven.plugin.version>0.16.1</rell.maven.plugin.version>
 
@@ -97,6 +98,12 @@
             <groupId>net.postchain</groupId>
             <artifactId>chromia-infrastructure</artifactId>
             <version>${postchain.chromia.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>net.postchain.client</groupId>
+            <artifactId>postchain-client</artifactId>
+            <version>${postchain.client.version}</version>
         </dependency>
 
         <!-- logging -->
@@ -389,6 +396,11 @@
             <id>postchain-chromia</id>
             <name>Postchain Chromia GitLab Registry</name>
             <url>https://gitlab.com/api/v4/projects/33481005/packages/maven</url>
+        </repository>
+        <repository>
+            <id>postchain-client</id>
+            <name>Postchain Client GitLab Registry</name>
+            <url>https://gitlab.com/api/v4/projects/46288950/packages/maven</url>
         </repository>
     </repositories>
 
