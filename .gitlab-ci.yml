@@ -2,7 +2,7 @@ image: registry.gitlab.com/chromaway/core-tools/chromia-images/maven-docker-java
 
 include:
   - project: "chromaway/core-infra/gitlab-automation"
-    ref: 1.3.5
+    ref: 1.3.4
     file:
       - templates/release.yml
       - templates/maven-dependency-scanning.yml
@@ -10,7 +10,7 @@ include:
 
 .setup:
   services:
-    - name: docker:29.1.1-dind
+    - name: docker:23.0.4-dind
       alias: docker
       command: [ "--tls=false" , "--experimental" ]
   artifacts:
@@ -88,18 +88,24 @@ deploy:
       -DskipTests
       --activate-profiles docker-push
       clean source:jar deploy
-    - echo "JAR_EXTENSION_HASHES=$(sha256sum target/ai-inference-extension-*.jar | grep -v sources.jar | sed 's/target\///' | sed -E 's/\s+/:/g' | sed -z 's/\n/;/g')" > .jar_extension_hashes.env
-  artifacts:
-    reports:
-      dotenv: .jar_extension_hashes.env
 
 deploy_library_chain:
-  extends: .deploy_library_chain
+  image: registry.gitlab.com/chromaway/core-tools/chromia-cli/chr:0.29.2
+  stage: deploy
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^[0-9]+\.[0-9]+\.[0-9]+$/
+  variables:
+    POSTCHAIN_CLIENT_PUBKEY: "${LIBRARY_CHAIN_PUBLIC_KEY}"
+    POSTCHAIN_CLIENT_PRIVKEY: ${LIBRARY_CHAIN_PRIVATE_KEY}
   script:
+    - apk add curl jq libxml2-utils
     - cd rell
     - chr install
     - chr build
-    - ${CI_PROJECT_DIR}/library_chain_deploy.sh -n ai_inference --major 0 --minor 3 --library-description "AI inference extension"
+    - ../ci/library_chain/deploy.sh -n ai_inference --major 0 --minor 3 --library-description "AI inference extension"
+  artifacts:
+    reports:
+      dotenv: .library_chain_releases.env
 
 dependency-check:
   extends: .maven-dependency-check
@@ -112,7 +118,6 @@ gitlab-release:
   extends: .gitlab-release-with-notes
   script:
     - echo "Running the release job."
-    - include_jar_extension_hashes
     - include_library_chain_releases
   release:
     name: 'AI inference extension $CI_COMMIT_TAG'
