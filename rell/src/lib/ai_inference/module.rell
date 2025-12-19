@@ -110,4 +110,3 @@ function fetch_inference_result(id: text): inference_result? {
  * @param inference_result The result
  */
 @extendable function on_inference_result(id: text, inference_result) {}
-
