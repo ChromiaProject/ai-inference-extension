@@ -90,6 +90,13 @@ class AiInferenceIT {
         engine.validate(input, output)
     }
 
+    @Test
+    fun `text inference and validation with stop sequence`() {
+        val input = GtvObjectMapper.toGtvDictionary(Request("What is the capital of France?", messages = null, stop = "."))
+        val (output, _) = engine.compute(input)
+        engine.validate(input, output)
+    }
+
     @ParameterizedTest
     @ValueSource(strings = [
         "Hello, world! My name is",
