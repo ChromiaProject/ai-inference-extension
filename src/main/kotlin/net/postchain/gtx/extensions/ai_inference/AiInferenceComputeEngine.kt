@@ -156,13 +156,16 @@ class AiInferenceComputeEngine : HybridComputeEngine, PostchainContextAware {
     override fun compute(input: Gtv): Pair<Gtv, Long> {
         val request = input.toObject<Request>()
         if (!request.prompt.isNullOrEmpty() && request.messages.isNullOrEmpty()) {
-            val (response, cost) = generateText(request.prompt)
+            val (response, cost) = generateText(request.prompt, request.stop)
             return GtvObjectMapper.toGtvDictionary(response) to cost
         } else if (request.prompt.isNullOrEmpty() && !request.messages.isNullOrEmpty()) {
-            val (response, cost) = generateChat(request.messages.map { ChatMessage(role = it.role, content = it.message) })
+            if (request.stop != null) {
+                throw UserMistake("Invalid request: stop is not supported for chat inference")
+            }
+            val (response, cost) = generateChat(request.messages.map { ChatMessage(role = it.role, content = it.message) }, null)
             return GtvObjectMapper.toGtvDictionary(response) to cost
         } else {
-            throw UserMistake("Invalid request: either prompt or messages must be set, but not both.")
+            throw UserMistake("Invalid request: either prompt or messages must be set, but not both")
         }
     }
 
@@ -170,12 +173,13 @@ class AiInferenceComputeEngine : HybridComputeEngine, PostchainContextAware {
             prompt.length +
             config.maxCompletionTokens * 2
 
-    fun generateText(prompt: String): Pair<Response, Long> {
+    fun generateText(prompt: String, stopSequence: String?): Pair<Response, Long> {
         val httpResponse = inferenceClient(HttpRequest(Method.POST, "${nodeConfig.url}/v1/completions/verified")
                 .with(verifiedCompletionRequest of VerifiedCompletionRequest(
                         model = config.model,
                         prompt = prompt,
                         max_tokens = config.maxCompletionTokens,
+                        stop = stopSequence,
                 )).let { if (nodeConfig.basicAuth != null) it.basicAuthentication(nodeConfig.basicAuth!!) else it })
         if (!httpResponse.status.successful) {
             throw ProgrammerMistake("Failed to generate text: ${httpResponse.status} ${httpResponse.bodyString()}")
@@ -197,12 +201,13 @@ class AiInferenceComputeEngine : HybridComputeEngine, PostchainContextAware {
             messages.sumOf { it.role.length + it.content.length } +
             config.maxCompletionTokens * 2
 
-    fun generateChat(messages: List<ChatMessage>): Pair<Response, Long> {
+    fun generateChat(messages: List<ChatMessage>, stopSequence: String?): Pair<Response, Long> {
         val httpResponse = inferenceClient(HttpRequest(Method.POST, "${nodeConfig.url}/v1/chat/completions/verified")
                 .with(verifiedChatCompletionRequest of VerifiedChatCompletionRequest(
                         model = config.model,
                         messages = messages,
                         max_completion_tokens = config.maxCompletionTokens,
+                        stop = stopSequence,
                 )).let { if (nodeConfig.basicAuth != null) it.basicAuthentication(nodeConfig.basicAuth!!) else it })
         if (!httpResponse.status.successful) {
             throw ProgrammerMistake("Failed to generate chat: ${httpResponse.status} ${httpResponse.bodyString()}")

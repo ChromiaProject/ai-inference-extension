@@ -25,6 +25,12 @@ data class VerifiedCompletionRequest(
          * The maximum number of tokens that can be generated in the completion.
          */
         val max_tokens: Long? = null,
+
+        /**
+         * A sequence where it will stop generating further tokens. The returned text will not contain the stop sequence,
+         * or `null` to generate exactly `max_tokens` tokens.
+         */
+        val stop: String? = null,
 )
 
 data class VerifiedCompletionResponse(
@@ -104,6 +110,12 @@ data class VerifiedChatCompletionRequest(
          * including visible output tokens and reasoning tokens.
          */
         val max_completion_tokens: Long? = null,
+
+        /**
+         * A sequence where it will stop generating further tokens. The returned text will not contain the stop sequence,
+         * or `null` to stop automatically.
+         */
+        val stop: String? = null,
 )
 
 data class VerifiedChatCompletionResponse(

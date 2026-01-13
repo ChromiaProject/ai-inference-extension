@@ -52,8 +52,10 @@ Submit a simple inference request with this function:
  * 
  * @param id A unique identifier for the inference request.
  * @param prompt The prompt to generate text for.
+ * @param stop a sequence where it will stop generating further tokens, the returned text will not contain the stop sequence,
+ *        or `null` to generate exactly `max_completion_tokens` tokens.
  */
-function submit_inference_request(id: text, prompt: text)
+function submit_inference_request(id: text, prompt: text, stop: text?)
 ```
 
 Or submit a chat inference request with this function:
@@ -114,8 +116,8 @@ module;
 import ai: lib.ai_inference;
 
 // TODO should have authentication for this operation
-operation submit_inference_request(id: text, prompt: text) {
-    ai.submit_inference_request(id, prompt);
+operation submit_inference_request(id: text, prompt: text, stop: text) {
+    ai.submit_inference_request(id, prompt, stop);
 }
 
 // TODO should have authentication for this operation

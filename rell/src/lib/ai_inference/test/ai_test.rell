@@ -8,7 +8,7 @@ import hch: ^^^.hybridcompute.test.helpers;
 function test_text_inference_success() {
     val prompt = "ABCD";
     rell.test.tx().op(
-        submit_inference_request_op("one", prompt)
+        submit_inference_request_op("one", prompt, null)
     ).run();
     assert_null(fetch_inference_result("one"));
     assert_equals(result.id, "");
@@ -29,7 +29,7 @@ function test_text_inference_success() {
 function test_text_inference_failure() {
     val prompt = "ABCD";
     rell.test.tx().op(
-        submit_inference_request_op("two", prompt)
+        submit_inference_request_op("two", prompt, null)
     ).run();
     assert_null(fetch_inference_result("two"));
     assert_equals(result.id, "");
