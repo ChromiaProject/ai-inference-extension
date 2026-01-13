@@ -3,8 +3,8 @@ module;
 import ai: lib.ai_inference;
 
 // TODO should have authentication for this operation
-operation submit_inference_request(id: text, prompt: text) {
-    ai.submit_inference_request(id, prompt);
+operation submit_inference_request(id: text, prompt: text, stop: text) {
+    ai.submit_inference_request(id, prompt, stop);
 }
 
 // TODO should have authentication for this operation
