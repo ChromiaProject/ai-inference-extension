@@ -53,7 +53,7 @@ function (id: text, type: text, result: hc.compute_result) {
  * @param stop a sequence where it will stop generating further tokens, the returned text will not contain the stop sequence,
  *        or `null` to generate exactly `max_completion_tokens` tokens.
  */
-function submit_inference_request(id: text, prompt: text, stop: text?) {
+function submit_inference_request(id: text, prompt: text, stop: text? = null) {
     hc.submit_compute_request(id, my_type, request(prompt, messages = null, stop = stop).to_gtv_pretty());
 }
 

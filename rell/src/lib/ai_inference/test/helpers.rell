@@ -4,8 +4,8 @@ import ^^.*;
 import hc: ^^^.hybridcompute;
 import ^^^.hybridcompute.test.helpers;
 
-operation submit_inference_request_op(id: text, prompt: text) {
-    submit_inference_request(id, prompt);
+operation submit_inference_request_op(id: text, prompt: text, stop: text?) {
+    submit_inference_request(id, prompt, stop);
 }
 
 operation submit_chat_inference_request_op(id: text, messages: list<chat_message>) {
