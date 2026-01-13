@@ -102,7 +102,7 @@ deploy_library_chain:
     - cd rell
     - chr install
     - chr build
-    - ../ci/library_chain/deploy.sh -n ai_inference --major 0 --minor 3 --library-description "AI inference extension"
+    - ../ci/library_chain/deploy.sh -n ai_inference --major 0 --minor 4 --library-description "AI inference extension"
   artifacts:
     reports:
       dotenv: .library_chain_releases.env
