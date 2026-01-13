@@ -10,6 +10,7 @@ struct chat_message {
 struct request {
     prompt: text?;
     messages: list<chat_message>?;
+    stop: text? = null;
 }
 
 struct response {
@@ -49,9 +50,11 @@ function (id: text, type: text, result: hc.compute_result) {
  * 
  * @param id A unique identifier for the inference request.
  * @param prompt The prompt to generate text for.
+ * @param stop a sequence where it will stop generating further tokens, the returned text will not contain the stop sequence,
+ *        or `null` to generate exactly `max_completion_tokens` tokens.
  */
-function submit_inference_request(id: text, prompt: text) {
-    hc.submit_compute_request(id, my_type, request(prompt, messages = null).to_gtv_pretty());
+function submit_inference_request(id: text, prompt: text, stop: text?) {
+    hc.submit_compute_request(id, my_type, request(prompt, messages = null, stop = stop).to_gtv_pretty());
 }
 
 /**
@@ -61,7 +64,7 @@ function submit_inference_request(id: text, prompt: text) {
  * @param messages A list of messages comprising the conversation so far.
  */
 function submit_chat_inference_request(id: text, messages: list<chat_message>) {
-    hc.submit_compute_request(id, my_type, request(prompt = null, messages).to_gtv_pretty());
+    hc.submit_compute_request(id, my_type, request(prompt = null, messages, stop = null).to_gtv_pretty());
 }
 
 struct inference_result {
@@ -110,4 +113,3 @@ function fetch_inference_result(id: text): inference_result? {
  * @param inference_result The result
  */
 @extendable function on_inference_result(id: text, inference_result) {}
-

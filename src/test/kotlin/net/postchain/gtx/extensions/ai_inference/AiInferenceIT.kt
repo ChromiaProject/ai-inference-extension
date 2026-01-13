@@ -53,18 +53,18 @@ class AiInferenceIT {
     @Disabled // for manual testing
     fun `text inference`() {
         val prompt = "Translate 'hello' to French:"
-        val (response, points) = engine.generateText(prompt)
+        val (response, points) = engine.generateText(prompt, "simple")
         println(response)
-        println(points)
+        println("Generated ${response.textTokens.size} tokens, cost $points points")
     }
 
     @Test
     @Disabled // for manual testing
     fun `chat inference`() {
         val messages = listOf(ChatMessage(role = "user", content = "What is the capital of France?"))
-        val (response, points) = engine.generateChat(messages)
+        val (response, points) = engine.generateChat(messages, null)
         println(response)
-        println(points)
+        println("Generated ${response.textTokens.size} tokens, cost $points points")
     }
 
     @Test
@@ -85,8 +85,8 @@ class AiInferenceIT {
         "What is the capital of France?",
         "Translate 'hello' to French:"])
     fun `text inference and validation`(prompt: String) {
-        val input = GtvObjectMapper.toGtvDictionary(Request(prompt, messages = null))
-        val (output, points) = engine.compute(input)
+        val input = GtvObjectMapper.toGtvDictionary(Request(prompt, messages = null, stop = null))
+        val (output, _) = engine.compute(input)
         engine.validate(input, output)
     }
 
@@ -101,15 +101,15 @@ class AiInferenceIT {
     fun `chat inference and validation`(prompt: String) {
         val input = GtvObjectMapper.toGtvDictionary(Request(prompt = null, messages = listOf(
                 net.postchain.gtx.extensions.ai_inference.rell.lib.ai_inference.ChatMessage(role = "user", message = prompt)
-        )))
-        val (output, points) = engine.compute(input)
+        ), stop = null))
+        val (output, _) = engine.compute(input)
         engine.validate(input, output)
     }
 
     @Test
     fun `negative validation`() {
         assertFailure {
-            val input = GtvObjectMapper.toGtvDictionary(Request("Some prompt", messages = null))
+            val input = GtvObjectMapper.toGtvDictionary(Request("Some prompt", messages = null, stop = null))
             val invalidOutput = GtvObjectMapper.toGtvDictionary(Response(
                     promptTokens = listOf(1, 9690, 198, 2683, 359, 253, 5356, 5646, 11173, 3365, 3511, 308, 34519, 28, 7018, 411, 407, 19712, 8182, 2, 198, 1, 4093, 198, 1780, 314, 260, 3575, 282, 4649, 47, 2, 198, 1, 520, 9531, 198),
                     textTokens = listOf(504, 3575, 282, 4649, 314, 7042, 30, 3),

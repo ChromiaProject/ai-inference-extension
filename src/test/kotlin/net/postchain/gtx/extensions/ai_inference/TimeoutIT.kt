@@ -31,7 +31,7 @@ class TimeoutIT {
     fun `connect timeout`() {
         val engine = createEngine(unroutableInternetUrl)
         assertFailure {
-            engine.compute(GtvObjectMapper.toGtvDictionary(Request(prompt = "hello", messages = null)))
+            engine.compute(GtvObjectMapper.toGtvDictionary(Request(prompt = "hello", messages = null, stop = null)))
         }.isInstanceOf(ProgrammerMistake::class)
     }
 
@@ -41,7 +41,7 @@ class TimeoutIT {
         withRequestTimeoutServer { url ->
             val engine = createEngine(url)
             assertFailure {
-                engine.compute(GtvObjectMapper.toGtvDictionary(Request(prompt = "hello", messages = null)))
+                engine.compute(GtvObjectMapper.toGtvDictionary(Request(prompt = "hello", messages = null, stop = null)))
             }.isInstanceOf(ProgrammerMistake::class)
         }
     }
@@ -53,7 +53,7 @@ class TimeoutIT {
             val engine = createEngine(url)
             assertFailure {
                 engine.validate(
-                        GtvObjectMapper.toGtvDictionary(Request(prompt = "hello", messages = null)),
+                        GtvObjectMapper.toGtvDictionary(Request(prompt = "hello", messages = null, stop = null)),
                         GtvObjectMapper.toGtvDictionary(Response(listOf(), listOf(), "hello")),
                 )
             }.isInstanceOf(ProgrammerMistake::class)
