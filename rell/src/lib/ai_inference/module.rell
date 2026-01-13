@@ -50,8 +50,8 @@ function (id: text, type: text, result: hc.compute_result) {
  * 
  * @param id A unique identifier for the inference request.
  * @param prompt The prompt to generate text for.
- * @param stop a sequence where it will stop generating further tokens, the returned text will not contain the stop sequence,
- *        or `null` to generate exactly `max_completion_tokens` tokens.
+ * @param stop a sequence where it will stop generating further tokens, the returned text will not contain the stop sequence.
+ *        Or `null` to generate exactly `max_completion_tokens` tokens.
  */
 function submit_inference_request(id: text, prompt: text, stop: text? = null) {
     hc.submit_compute_request(id, my_type, request(prompt, messages = null, stop = stop).to_gtv_pretty());
