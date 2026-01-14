@@ -86,15 +86,13 @@ class AiInferenceIT {
         "Translate 'hello' to French:"])
     fun `text inference and validation`(prompt: String) {
         val input = GtvObjectMapper.toGtvDictionary(Request(prompt, messages = null, stop = null))
-        val (output, _) = engine.compute(input)
-        engine.validate(input, output)
+        engine.compute(input)
     }
 
     @Test
     fun `text inference and validation with stop sequence`() {
         val input = GtvObjectMapper.toGtvDictionary(Request("What is the capital of France?", messages = null, stop = "."))
-        val (output, _) = engine.compute(input)
-        engine.validate(input, output)
+        engine.compute(input)
     }
 
     @ParameterizedTest
@@ -109,8 +107,7 @@ class AiInferenceIT {
         val input = GtvObjectMapper.toGtvDictionary(Request(prompt = null, messages = listOf(
                 net.postchain.gtx.extensions.ai_inference.rell.lib.ai_inference.ChatMessage(role = "user", message = prompt)
         ), stop = null))
-        val (output, _) = engine.compute(input)
-        engine.validate(input, output)
+        engine.compute(input)
     }
 
     @Test

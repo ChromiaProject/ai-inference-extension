@@ -157,12 +157,14 @@ class AiInferenceComputeEngine : HybridComputeEngine, PostchainContextAware {
         val request = input.toObject<Request>()
         if (!request.prompt.isNullOrEmpty() && request.messages.isNullOrEmpty()) {
             val (response, cost) = generateText(request.prompt, request.stop)
+            verifyTextGeneration(response.promptTokens, response.textTokens)
             return GtvObjectMapper.toGtvDictionary(response) to cost
         } else if (request.prompt.isNullOrEmpty() && !request.messages.isNullOrEmpty()) {
             if (request.stop != null) {
                 throw UserMistake("Invalid request: stop is not supported for chat inference")
             }
             val (response, cost) = generateChat(request.messages.map { ChatMessage(role = it.role, content = it.message) }, null)
+            verifyTextGeneration(response.promptTokens, response.textTokens)
             return GtvObjectMapper.toGtvDictionary(response) to cost
         } else {
             throw UserMistake("Invalid request: either prompt or messages must be set, but not both")
