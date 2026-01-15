@@ -1,57 +1,28 @@
 package net.postchain.gtx.extensions.ai_inference
 
 import assertk.assertFailure
+import assertk.assertThat
+import assertk.assertions.isGreaterThan
 import assertk.assertions.isInstanceOf
-import mu.KLogging
-import net.postchain.PostchainContext
+import assertk.assertions.messageContains
+import net.postchain.common.exception.ProgrammerMistake
 import net.postchain.common.exception.UserMistake
-import net.postchain.config.app.AppConfig
-import net.postchain.core.BlockchainConfiguration
-import net.postchain.core.EContext
-import net.postchain.gtv.GtvFactory.gtv
 import net.postchain.gtv.mapper.GtvObjectMapper
 import net.postchain.gtx.extensions.ai_inference.rell.lib.ai_inference.Request
 import net.postchain.gtx.extensions.ai_inference.rell.lib.ai_inference.Response
-import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
-import org.mockito.kotlin.doReturn
-import org.mockito.kotlin.mock
+import uk.org.webcompere.systemstubs.environment.EnvironmentVariables
+import java.util.concurrent.Callable
 
-class AiInferenceIT {
-    companion object : KLogging() {
-        lateinit var engine: AiInferenceComputeEngine
-
-        @BeforeAll
-        @JvmStatic
-        fun setup() {
-            val model = System.getenv("AI_SERVICE_MODEL")
-                    ?: throw IllegalArgumentException("AI_SERVICE_MODEL environment variable not set")
-
-            engine = AiInferenceComputeEngine()
-            val blockchainConfig = AiInferenceConfig(
-                    model = model,
-                    inferenceTimeoutSeconds = 10L,
-                    verificationTimeoutSeconds = 10L,
-                    maxCompletionTokens = 100L,
-            )
-            val configuration = mock<BlockchainConfiguration> {
-                on { rawConfig } doReturn gtv(mapOf(AiInferenceComputeEngine.NAME to GtvObjectMapper.toGtvDictionary(blockchainConfig)))
-            }
-            val postchainContext = mock<PostchainContext> {
-                on { appConfig } doReturn AppConfig.fromEnvironment()
-            }
-            val ctx = mock<EContext>()
-            engine.initializeContext(configuration, postchainContext, ctx)
-            engine.load()
-        }
-    }
+class AiInferenceIT : AiInferenceBaseTest() {
 
     @Test
     @Disabled // for manual testing
     fun `text inference`() {
+        val engine = createEngine()
         val prompt = "Translate 'hello' to French:"
         val (response, points) = engine.generateText(prompt, "simple")
         println(response)
@@ -61,6 +32,7 @@ class AiInferenceIT {
     @Test
     @Disabled // for manual testing
     fun `chat inference`() {
+        val engine = createEngine()
         val messages = listOf(ChatMessage(role = "user", content = "What is the capital of France?"))
         val (response, points) = engine.generateChat(messages, null)
         println(response)
@@ -69,11 +41,21 @@ class AiInferenceIT {
 
     @Test
     @Disabled // for manual testing
-    fun validation() {
+    fun verification() {
+        val engine = createEngine()
         engine.verifyTextGeneration(
                 promptTokens = listOf(1, 9690, 198, 2683, 359, 253, 5356, 5646, 11173, 3365, 3511, 308, 34519, 28, 7018, 411, 407, 19712, 8182, 2, 198, 1, 4093, 198, 1780, 314, 260, 3575, 282, 4649, 47, 2, 198, 1, 520, 9531, 198),
                 textTokens = listOf(504, 3575, 282, 4649, 314, 7042, 30, 2)
         )
+    }
+
+    @Test
+    fun `estimate points for text`() {
+        val engine = createEngine()
+        val prompt = "Hello, how are you?"
+        val input = GtvObjectMapper.toGtvDictionary(Request(prompt, messages = null, stop = null))
+        val points = engine.estimatePoints(input)
+        assertThat(points).isGreaterThan(0)
     }
 
     @ParameterizedTest
@@ -85,14 +67,27 @@ class AiInferenceIT {
         "What is the capital of France?",
         "Translate 'hello' to French:"])
     fun `text inference and validation`(prompt: String) {
+        val engine = createEngine()
         val input = GtvObjectMapper.toGtvDictionary(Request(prompt, messages = null, stop = null))
         engine.compute(input)
     }
 
     @Test
     fun `text inference and validation with stop sequence`() {
+        val engine = createEngine()
         val input = GtvObjectMapper.toGtvDictionary(Request("What is the capital of France?", messages = null, stop = "."))
         engine.compute(input)
+    }
+
+    @Test
+    fun `estimate points for chat`() {
+        val engine = createEngine()
+        val prompt = "Hello, how are you?"
+        val input = GtvObjectMapper.toGtvDictionary(Request(null, messages = listOf(
+                net.postchain.gtx.extensions.ai_inference.rell.lib.ai_inference.ChatMessage(role = "user", message = prompt)
+        ), stop = null))
+        val points = engine.estimatePoints(input)
+        assertThat(points).isGreaterThan(0)
     }
 
     @ParameterizedTest
@@ -104,6 +99,7 @@ class AiInferenceIT {
         "What is the capital of France?",
         "Translate 'hello' to French:"])
     fun `chat inference and validation`(prompt: String) {
+        val engine = createEngine()
         val input = GtvObjectMapper.toGtvDictionary(Request(prompt = null, messages = listOf(
                 net.postchain.gtx.extensions.ai_inference.rell.lib.ai_inference.ChatMessage(role = "user", message = prompt)
         ), stop = null))
@@ -112,6 +108,7 @@ class AiInferenceIT {
 
     @Test
     fun `negative validation`() {
+        val engine = createEngine()
         assertFailure {
             val input = GtvObjectMapper.toGtvDictionary(Request("Some prompt", messages = null, stop = null))
             val invalidOutput = GtvObjectMapper.toGtvDictionary(Response(
@@ -120,6 +117,56 @@ class AiInferenceIT {
                     text = "", // not used
             ))
             engine.validate(input, invalidOutput)
-        }.isInstanceOf(UserMistake::class.java)
+        }.isInstanceOf(UserMistake::class.java).messageContains("Generated text does not match")
+    }
+
+    @Test
+    fun `non existing model`() {
+        val engine = createEngine(model = "bogus-model")
+        val input = GtvObjectMapper.toGtvDictionary(Request("What is the capital of France?", messages = null, stop = "."))
+        assertFailure {
+            engine.compute(input)
+        }.isInstanceOf(UserMistake::class.java).messageContains("The model `bogus-model` does not exist")
+    }
+
+    @Test
+    fun `too many max tokens`() {
+        val engine = createEngine(maxTokens = 10000L)
+        val input = GtvObjectMapper.toGtvDictionary(Request("What is the capital of France?", messages = null, stop = "."))
+        assertFailure {
+            engine.compute(input)
+        }.isInstanceOf(UserMistake::class.java).messageContains("is too large: 10000. This model's maximum context length is 2048 tokens")
+    }
+
+    @Test
+    fun `too many input tokens`() {
+        val engine = createEngine()
+        val input = GtvObjectMapper.toGtvDictionary(Request("What is the capital of France? ".repeat(1000), messages = null, stop = null))
+        assertFailure {
+            engine.compute(input)
+        }.isInstanceOf(UserMistake::class.java).messageContains("This model's maximum context length is 2048 tokens. However, your request has")
+    }
+
+    @Test
+    fun `auth error`() {
+        val engine = EnvironmentVariables(AiInferenceNodeConfig.BASIC_AUTH_PASSWORD, "wrong_password").execute(Callable {
+            createEngine()
+        })
+        val input = GtvObjectMapper.toGtvDictionary(Request("What is the capital of France?", messages = null, stop = "."))
+        assertFailure {
+            engine.compute(input)
+        }.isInstanceOf(ProgrammerMistake::class.java).messageContains("Failed to generate text: 401 Unauthorized")
+    }
+
+    @Test
+    fun `wrong URL`() {
+        val actualUrl = System.getenv(AiInferenceNodeConfig.URL)
+        val engine = EnvironmentVariables(AiInferenceNodeConfig.URL, "$actualUrl/bogus").execute(Callable {
+            createEngine()
+        })
+        val input = GtvObjectMapper.toGtvDictionary(Request("What is the capital of France?", messages = null, stop = "."))
+        assertFailure {
+            engine.compute(input)
+        }.isInstanceOf(ProgrammerMistake::class.java).messageContains("Failed to generate text: Not Found")
     }
 }

@@ -38,10 +38,10 @@ data class AiInferenceNodeConfig(
         val basicAuth: Credentials? = null,
 ) {
     companion object {
-        private const val CONFIG_ENV_PREFIX = "POSTCHAIN_EXTENSION_AI_INFERENCE_"
-        private const val URL = "${CONFIG_ENV_PREFIX}URL"
-        private const val BASIC_AUTH_USER = "${CONFIG_ENV_PREFIX}BASIC_AUTH_USER"
-        private const val BASIC_AUTH_PASSWORD = "${CONFIG_ENV_PREFIX}BASIC_AUTH_PASSWORD"
+        const val CONFIG_ENV_PREFIX = "POSTCHAIN_EXTENSION_AI_INFERENCE_"
+        const val URL = "${CONFIG_ENV_PREFIX}URL"
+        const val BASIC_AUTH_USER = "${CONFIG_ENV_PREFIX}BASIC_AUTH_USER"
+        const val BASIC_AUTH_PASSWORD = "${CONFIG_ENV_PREFIX}BASIC_AUTH_PASSWORD"
 
         @JvmStatic
         fun fromAppConfig(config: AppConfig): AiInferenceNodeConfig {
@@ -184,7 +184,7 @@ class AiInferenceComputeEngine : HybridComputeEngine, PostchainContextAware {
                         stop = stopSequence,
                 )).let { if (nodeConfig.basicAuth != null) it.basicAuthentication(nodeConfig.basicAuth!!) else it })
         if (!httpResponse.status.successful) {
-            throw ProgrammerMistake("Failed to generate text: ${httpResponse.status} ${httpResponse.bodyString()}")
+            handleError(httpResponse, "generate text")
         }
         val response = verifiedCompletionResponse(httpResponse)
         val choice = response.choices.firstOrNull() ?: throw UserMistake("No choices found in response")
@@ -212,7 +212,7 @@ class AiInferenceComputeEngine : HybridComputeEngine, PostchainContextAware {
                         stop = stopSequence,
                 )).let { if (nodeConfig.basicAuth != null) it.basicAuthentication(nodeConfig.basicAuth!!) else it })
         if (!httpResponse.status.successful) {
-            throw ProgrammerMistake("Failed to generate chat: ${httpResponse.status} ${httpResponse.bodyString()}")
+            handleError(httpResponse, "generate chat")
         }
         val response = verifiedChatCompletionResponse(httpResponse)
         val choice = response.choices.firstOrNull() ?: throw UserMistake("No choices found in chat response")
@@ -243,12 +243,31 @@ class AiInferenceComputeEngine : HybridComputeEngine, PostchainContextAware {
                         greedy_logprob_threshold = 0.001,
                 )).let { if (nodeConfig.basicAuth != null) it.basicAuthentication(nodeConfig.basicAuth!!) else it })
         if (!httpResponse.status.successful) {
-            throw ProgrammerMistake("Failed to verify text: ${httpResponse.status} ${httpResponse.bodyString()}")
+            handleError(httpResponse, "verify")
         }
         val response = verifyDecodingResponse(httpResponse)
         logger.info("Verified id ${response.id} at ${response.created} with model ${response.model} is_verified_greedy=${response.is_verified_greedy}")
         if (!response.is_verified_greedy) {
             throw UserMistake("Generated text does not match")
+        }
+    }
+
+    private fun handleError(httpResponse: org.http4k.core.Response, what: String): Nothing {
+        val response = try {
+            errorResponse(httpResponse)
+        } catch (_: Exception) {
+            throw ProgrammerMistake("Failed to $what: ${httpResponse.status} ${httpResponse.bodyString()}")
+        }
+        if (response.error != null) {
+            if (httpResponse.status == org.http4k.core.Status.BAD_REQUEST || httpResponse.status == org.http4k.core.Status.NOT_FOUND) {
+                throw UserMistake(response.error.message)
+            } else {
+                throw ProgrammerMistake("Failed to $what: ${response.error.message}")
+            }
+        } else if (response.detail != null) {
+            throw ProgrammerMistake("Failed to $what: ${response.detail}")
+        } else {
+            throw ProgrammerMistake("Failed to $what: ${httpResponse.status} ${httpResponse.bodyString()}")
         }
     }
 }
