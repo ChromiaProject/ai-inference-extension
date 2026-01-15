@@ -9,6 +9,7 @@ val verifiedChatCompletionRequest = Body.auto<VerifiedChatCompletionRequest>().t
 val verifiedChatCompletionResponse = Body.auto<VerifiedChatCompletionResponse>().toLens()
 val verifyDecodingRequest = Body.auto<VerifyDecodingRequest>().toLens()
 val verifyDecodingResponse = Body.auto<VerifyDecodingResponse>().toLens()
+val errorResponse = Body.auto<ErrorResponse>().toLens()
 
 data class VerifiedCompletionRequest(
         /**
@@ -270,4 +271,16 @@ data class VerifyDecodingResponse(
          * Token IDs for the input completion.
          */
         val completion_token_ids: List<Long>,
+)
+
+data class ErrorResponse(
+        val detail: String?,
+        val error: ErrorInfo?,
+)
+
+data class ErrorInfo(
+        val message: String,
+        val type: String,
+        val param: String? = null,
+        val code: Int,
 )
