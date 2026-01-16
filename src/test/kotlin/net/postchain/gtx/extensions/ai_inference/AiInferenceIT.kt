@@ -5,8 +5,10 @@ import assertk.assertThat
 import assertk.assertions.isEqualTo
 import assertk.assertions.isGreaterThan
 import assertk.assertions.isInstanceOf
+import assertk.assertions.isNotNull
 import assertk.assertions.messageContains
 import com.sun.net.httpserver.HttpServer.create
+import net.postchain.common.createLogCaptor
 import net.postchain.common.exception.ProgrammerMistake
 import net.postchain.common.exception.UserMistake
 import net.postchain.gtv.mapper.GtvObjectMapper
@@ -112,17 +114,25 @@ class AiInferenceIT : AiInferenceBaseTest() {
     }
 
     @Test
-    fun `negative validation`() {
+    fun `negative validation with cache`() {
+        val appender = createLogCaptor(AiInferenceComputeEngine::class.java, "Engine")
+
         val engine = createEngine()
+        val input = GtvObjectMapper.toGtvDictionary(Request("Some prompt", messages = null, stop = null))
+        val invalidOutput = GtvObjectMapper.toGtvDictionary(Response(
+                promptTokens = listOf(1, 9690, 198, 2683, 359, 253, 5356, 5646, 11173, 3365, 3511, 308, 34519, 28, 7018, 411, 407, 19712, 8182, 2, 198, 1, 4093, 198, 1780, 314, 260, 3575, 282, 4649, 47, 2, 198, 1, 520, 9531, 198),
+                textTokens = listOf(504, 3575, 282, 4649, 314, 7042, 30, 3),
+                text = "", // not used
+        ))
         assertFailure {
-            val input = GtvObjectMapper.toGtvDictionary(Request("Some prompt", messages = null, stop = null))
-            val invalidOutput = GtvObjectMapper.toGtvDictionary(Response(
-                    promptTokens = listOf(1, 9690, 198, 2683, 359, 253, 5356, 5646, 11173, 3365, 3511, 308, 34519, 28, 7018, 411, 407, 19712, 8182, 2, 198, 1, 4093, 198, 1780, 314, 260, 3575, 282, 4649, 47, 2, 198, 1, 520, 9531, 198),
-                    textTokens = listOf(504, 3575, 282, 4649, 314, 7042, 30, 3),
-                    text = "", // not used
-            ))
             engine.validate(input, invalidOutput)
         }.isInstanceOf(UserMistake::class.java).messageContains("Generated text does not match")
+        assertFailure {
+            engine.validate(input, invalidOutput)
+        }.isInstanceOf(UserMistake::class.java).messageContains("Generated text does not match")
+
+        assertThat(appender.events.find { it.message.toString().contains("is_verified_greedy=false") }).isNotNull()
+        assertThat(appender.events.find { it.message.toString() == "Returning cached verification failure" }).isNotNull()
     }
 
     @Test

@@ -4,14 +4,19 @@ import mu.KLogging
 import net.postchain.PostchainContext
 import net.postchain.common.exception.ProgrammerMistake
 import net.postchain.common.exception.UserMistake
+import net.postchain.common.types.WrappedByteArray
+import net.postchain.common.wrap
 import net.postchain.config.app.AppConfig
 import net.postchain.core.BlockchainConfiguration
 import net.postchain.core.EContext
+import net.postchain.crypto.sha256Digest
 import net.postchain.gtv.Gtv
 import net.postchain.gtv.mapper.DefaultValue
 import net.postchain.gtv.mapper.GtvObjectMapper
 import net.postchain.gtv.mapper.Name
 import net.postchain.gtv.mapper.toObject
+import net.postchain.gtv.merkle.GtvMerkleHashCalculatorV2
+import net.postchain.gtv.merkleHash
 import net.postchain.gtx.PostchainContextAware
 import net.postchain.gtx.extensions.ai_inference.rell.lib.ai_inference.Request
 import net.postchain.gtx.extensions.ai_inference.rell.lib.ai_inference.Response
@@ -95,6 +100,7 @@ class AiInferenceComputeEngine : HybridComputeEngine, PostchainContextAware {
         const val DEFAULT_INFERENCE_TIMEOUT_SECONDS = 60
         const val DEFAULT_VERIFICATION_TIMEOUT_SECONDS = 10
         const val BASE_REQUEST_COST = 1000L
+        const val VERIFICATION_CACHE_SIZE = 100
     }
 
     override val name = NAME
@@ -103,6 +109,13 @@ class AiInferenceComputeEngine : HybridComputeEngine, PostchainContextAware {
     internal lateinit var config: AiInferenceConfig
     internal lateinit var inferenceRequestStrategy: RequestStrategy
     internal lateinit var verificationRequestStrategy: RequestStrategy
+
+    internal val merkleHashCalculator = GtvMerkleHashCalculatorV2(::sha256Digest)
+    internal val verificationFailureCache: MutableMap<WrappedByteArray, Boolean> = object : LinkedHashMap<WrappedByteArray, Boolean>(16, 0.75f, false) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<WrappedByteArray, Boolean>?): Boolean {
+            return size > VERIFICATION_CACHE_SIZE
+        }
+    }
 
     override fun initializeContext(configuration: BlockchainConfiguration, postchainContext: PostchainContext, ctx: EContext) {
         nodeConfig = AiInferenceNodeConfig.fromAppConfig(postchainContext.appConfig)
@@ -171,15 +184,17 @@ class AiInferenceComputeEngine : HybridComputeEngine, PostchainContextAware {
         val request = input.toObject<Request>()
         if (!request.prompt.isNullOrEmpty() && request.messages.isNullOrEmpty()) {
             val (response, cost) = generateText(request.prompt, request.stop)
-            verifyTextGeneration(response.promptTokens, response.textTokens)
-            return GtvObjectMapper.toGtvDictionary(response) to cost
+            val output = GtvObjectMapper.toGtvDictionary(response)
+            verifyTextGeneration(output)
+            return output to cost
         } else if (request.prompt.isNullOrEmpty() && !request.messages.isNullOrEmpty()) {
             if (request.stop != null) {
                 throw UserMistake("Invalid request: stop is not supported for chat inference")
             }
             val (response, cost) = generateChat(request.messages.map { ChatMessage(role = it.role, content = it.message) }, null)
-            verifyTextGeneration(response.promptTokens, response.textTokens)
-            return GtvObjectMapper.toGtvDictionary(response) to cost
+            val output = GtvObjectMapper.toGtvDictionary(response)
+            verifyTextGeneration(output)
+            return output to cost
         } else {
             throw UserMistake("Invalid request: either prompt or messages must be set, but not both")
         }
@@ -243,11 +258,32 @@ class AiInferenceComputeEngine : HybridComputeEngine, PostchainContextAware {
     })
 
     override fun validate(input: Gtv, output: Gtv) {
-        val response = output.toObject<Response>()
-        verifyTextGeneration(response.promptTokens, response.textTokens)
+        verifyTextGeneration(output)
     }
 
-    fun verifyTextGeneration(promptTokens: List<Long>, textTokens: List<Long>) = verificationRequestStrategy.request({ endpoint ->
+    fun verifyTextGeneration(output: Gtv) {
+        val cacheKey = output.merkleHash(merkleHashCalculator).wrap()
+        if (synchronized(verificationFailureCache) {
+                    verificationFailureCache.containsKey(cacheKey)
+                }) {
+            logger.info("Returning cached verification failure")
+            verificationFailure()
+        }
+        val response = output.toObject<Response>()
+        val isVerified = verifyTextGeneration(response.promptTokens, response.textTokens)
+        if (!isVerified) {
+            synchronized(verificationFailureCache) {
+                verificationFailureCache[cacheKey] = true
+            }
+            verificationFailure()
+        }
+    }
+
+    private fun verificationFailure(): Nothing {
+        throw UserMistake("Generated text does not match")
+    }
+
+    fun verifyTextGeneration(promptTokens: List<Long>, textTokens: List<Long>): Boolean = verificationRequestStrategy.request({ endpoint ->
         HttpRequest(Method.POST, "${endpoint}/v1/verify_decoding")
                 .with(verifyDecodingRequest of VerifyDecodingRequest(
                         model = config.model,
@@ -260,13 +296,9 @@ class AiInferenceComputeEngine : HybridComputeEngine, PostchainContextAware {
     }, { httpResponse, _ ->
         val response = verifyDecodingResponse(httpResponse)
         logger.info("Verified id ${response.id} at ${response.created} with model ${response.model} is_verified_greedy=${response.is_verified_greedy}")
-        if (!response.is_verified_greedy) {
-            throw UserMistake("Generated text does not match")
-        }
+        response.is_verified_greedy
     }, { httpResponse, _ ->
-        if (!httpResponse.status.successful) {
-            handleError(httpResponse, "verify")
-        }
+        handleError(httpResponse, "verify")
     })
 
     private fun handleError(httpResponse: org.http4k.core.Response, what: String): Nothing {
