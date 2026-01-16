@@ -5,10 +5,11 @@ import org.http4k.core.MemoryResponse
 import org.http4k.core.Request
 import org.http4k.core.Response
 import org.http4k.core.Status
+import java.io.Closeable
 import javax.net.ssl.SSLException
 import kotlin.time.Duration
 
-class AiServiceRequestStrategy(val endpoint: String, val retryCount: Int, val retryDelay: Duration, val httpClient: HttpHandler)
+class AiServiceRequestStrategy(val endpoint: String, val retryCount: Int, val retryDelay: Duration, val httpClient: HttpHandler, val closeable: Closeable)
     : RequestStrategy {
     override fun <R> request(createRequest: (String) -> Request,
                              success: (Response, String) -> R,
@@ -33,6 +34,10 @@ class AiServiceRequestStrategy(val endpoint: String, val retryCount: Int, val re
         httpClient(request)
     } catch (_: SSLException) {
         MemoryResponse(Status.CONNECTION_REFUSED)
+    }
+
+    override fun close() {
+        closeable.close()
     }
 }
 
