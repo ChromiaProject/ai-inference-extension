@@ -37,11 +37,13 @@ This will generate a proposal that needs to be voted on.
 
 This extension requires the following node configuration:
 
-| Name                                         | Description                  | Type   | Required           | Default |
-|----------------------------------------------|------------------------------|--------|--------------------|---------|
-| `extension.ai_inference.url`                 | AI inference API endpoint    | string | :white_check_mark: |         |
-| `extension.ai_inference.basic_auth_user`     | User for HTTP basic auth     | string |                    | no auth |
-| `extension.ai_inference.basic_auth_password` | Password for HTTP basic auth | string |                    | no auth |
+| Name                                         | Description                                                  | Type    | Required           | Default |
+|----------------------------------------------|--------------------------------------------------------------|---------|--------------------|---------|
+| `extension.ai_inference.url`                 | AI inference API endpoint                                    | string  | :white_check_mark: |         |
+| `extension.ai_inference.retry_count`         | How many times to try inference if it fails                  | integer |                    | 5       |
+| `extension.ai_inference.retry_delay_millis`  | How long time to wait between each attempt (in milliseconds) | integer |                    | 1000    |
+| `extension.ai_inference.basic_auth_user`     | User for HTTP basic auth                                     | string  |                    | no auth |
+| `extension.ai_inference.basic_auth_password` | Password for HTTP basic auth                                 | string  |                    | no auth |
 
 ## Developer documentation
 
