@@ -9,6 +9,7 @@ import net.postchain.common.wrap
 import net.postchain.config.app.AppConfig
 import net.postchain.core.BlockchainConfiguration
 import net.postchain.core.EContext
+import net.postchain.core.Shutdownable
 import net.postchain.crypto.sha256Digest
 import net.postchain.gtv.Gtv
 import net.postchain.gtv.mapper.DefaultValue
@@ -36,6 +37,7 @@ import org.http4k.core.with
 import org.http4k.filter.ClientFilters
 import org.http4k.filter.GzipCompressionMode
 import org.http4k.lens.basicAuthentication
+import java.io.Closeable
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import org.http4k.core.Request as HttpRequest
@@ -93,7 +95,7 @@ data class AiInferenceConfig(
         val maxCompletionTokens: Long,
 )
 
-class AiInferenceComputeEngine : HybridComputeEngine, PostchainContextAware {
+class AiInferenceComputeEngine : HybridComputeEngine, PostchainContextAware, Shutdownable {
     companion object : KLogging() {
         const val NAME = "ai_inference"
         const val CONNECT_TIMEOUT_SECONDS = 10
@@ -132,38 +134,43 @@ class AiInferenceComputeEngine : HybridComputeEngine, PostchainContextAware {
         }
 
         // Configurable retires for inference
-        val inferenceClient = createClientWithTimeout(Timeout.ofSeconds(config.inferenceTimeoutSeconds))
-        inferenceRequestStrategy = AiServiceRequestStrategy(nodeConfig.url, retryCount = nodeConfig.retryCount, retryDelay = nodeConfig.retryDelay, inferenceClient)
+        val (inferenceClient, inferenceCloseable) = createClientWithTimeout(Timeout.ofSeconds(config.inferenceTimeoutSeconds))
+        inferenceRequestStrategy = AiServiceRequestStrategy(nodeConfig.url,
+                retryCount = nodeConfig.retryCount, retryDelay = nodeConfig.retryDelay, inferenceClient, inferenceCloseable)
 
         // No retries for verification
-        val verificationClient = createClientWithTimeout(Timeout.ofSeconds(config.verificationTimeoutSeconds))
-        verificationRequestStrategy = AiServiceRequestStrategy(nodeConfig.url, retryCount = 1, retryDelay = Duration.ZERO, verificationClient)
+        val (verificationClient, verificationCloseable) = createClientWithTimeout(Timeout.ofSeconds(config.verificationTimeoutSeconds))
+        verificationRequestStrategy = AiServiceRequestStrategy(nodeConfig.url,
+                retryCount = 1, retryDelay = Duration.ZERO, verificationClient, verificationCloseable)
     }
 
-    private fun createClientWithTimeout(timeout: Timeout): HttpHandler = ClientFilters.AcceptGZip(GzipCompressionMode.Streaming())
-            .then(
-                    ClientFilters.RequestTracing(
-                            startReportFn = { request, _ ->
-                                logger.debug { "\n$request" }
-                            },
-                            endReportFn = { _, response, _ ->
-                                logger.debug { "\n$response" }
-                            }
-                    ).then(
-                            ApacheClient(HttpClients.custom()
-                                    .setConnectionManager(PoolingHttpClientConnectionManagerBuilder.create()
-                                            .setDefaultConnectionConfig(ConnectionConfig.custom()
-                                                    .setConnectTimeout(Timeout.ofSeconds(CONNECT_TIMEOUT_SECONDS.toLong()))
-                                                    .build())
-                                            .build())
-                                    .setDefaultRequestConfig(
-                                            RequestConfig.custom()
-                                                    .setRedirectsEnabled(false)
-                                                    .setCookieSpec(StandardCookieSpec.IGNORE)
-                                                    .setResponseTimeout(timeout)
-                                                    .build())
-                                    .build())
-                    ))
+    private fun createClientWithTimeout(timeout: Timeout): Pair<HttpHandler, Closeable> {
+        val closeableHttpClient = HttpClients.custom()
+                .setConnectionManager(PoolingHttpClientConnectionManagerBuilder.create()
+                        .setDefaultConnectionConfig(ConnectionConfig.custom()
+                                .setConnectTimeout(Timeout.ofSeconds(CONNECT_TIMEOUT_SECONDS.toLong()))
+                                .build())
+                        .build())
+                .setDefaultRequestConfig(
+                        RequestConfig.custom()
+                                .setRedirectsEnabled(false)
+                                .setCookieSpec(StandardCookieSpec.IGNORE)
+                                .setResponseTimeout(timeout)
+                                .build())
+                .build()
+        return ClientFilters.AcceptGZip(GzipCompressionMode.Streaming())
+                .then(
+                        ClientFilters.RequestTracing(
+                                startReportFn = { request, _ ->
+                                    logger.debug { "\n$request" }
+                                },
+                                endReportFn = { _, response, _ ->
+                                    logger.debug { "\n$response" }
+                                }
+                        ).then(
+                                ApacheClient(closeableHttpClient)
+                        )) to closeableHttpClient
+    }
 
     override fun load() {
         // nothing to do here
@@ -318,5 +325,10 @@ class AiInferenceComputeEngine : HybridComputeEngine, PostchainContextAware {
         } else {
             throw ProgrammerMistake("Failed to $what: ${httpResponse.status} ${httpResponse.bodyString()}")
         }
+    }
+
+    override fun shutdown() {
+        inferenceRequestStrategy.close()
+        verificationRequestStrategy.close()
     }
 }
