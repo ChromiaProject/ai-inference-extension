@@ -2,10 +2,11 @@ package net.postchain.gtx.extensions.ai_inference
 
 import assertk.assertFailure
 import assertk.assertThat
+import assertk.assertions.isEqualTo
 import assertk.assertions.isGreaterThan
 import assertk.assertions.isInstanceOf
 import assertk.assertions.messageContains
-import com.sun.net.httpserver.HttpServer
+import com.sun.net.httpserver.HttpServer.create
 import net.postchain.common.exception.ProgrammerMistake
 import net.postchain.common.exception.UserMistake
 import net.postchain.gtv.mapper.GtvObjectMapper
@@ -13,11 +14,13 @@ import net.postchain.gtx.extensions.ai_inference.rell.lib.ai_inference.Request
 import net.postchain.gtx.extensions.ai_inference.rell.lib.ai_inference.Response
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.Timeout
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import uk.org.webcompere.systemstubs.environment.EnvironmentVariables
 import java.net.InetSocketAddress
 import java.util.concurrent.Callable
+import java.util.concurrent.TimeUnit
 
 class AiInferenceIT : AiInferenceBaseTest() {
 
@@ -173,28 +176,26 @@ class AiInferenceIT : AiInferenceBaseTest() {
     }
 
     @Test
+    @Timeout(10, unit = TimeUnit.SECONDS)
     fun retries() {
-        withFailingHttpServer { url ->
-            val engine = EnvironmentVariables(AiInferenceNodeConfig.URL, url).execute(Callable {
-                createEngine()
-            })
-            val input = GtvObjectMapper.toGtvDictionary(Request("What is the capital of France?", messages = null, stop = "."))
-            assertFailure {
-                engine.compute(input)
-            }.isInstanceOf(ProgrammerMistake::class.java).messageContains("the_error")
-        }
-    }
-
-    private fun withFailingHttpServer(block: (url: String) -> Unit) {
-        val server = HttpServer.create(InetSocketAddress(0), 0)
+        var attempts = 0
+        val server = create(InetSocketAddress(0), 0)
         server.createContext("/") { exchange ->
+            attempts++
             val response = "{\"error\": {\"message\": \"the_error\"}}".toByteArray()
             exchange.sendResponseHeaders(500, response.size.toLong())
             exchange.responseBody.use { it.write(response) }
         }
         server.start()
         try {
-            block("http://localhost:${server.address.port}")
+            val engine = EnvironmentVariables(AiInferenceNodeConfig.URL, "http://localhost:${server.address.port}").execute(Callable {
+                createEngine()
+            })
+            val input = GtvObjectMapper.toGtvDictionary(Request("What is the capital of France?", messages = null, stop = "."))
+            assertFailure {
+                engine.compute(input)
+            }.isInstanceOf(ProgrammerMistake::class.java).messageContains("the_error")
+            assertThat(attempts).isEqualTo(5)
         } finally {
             server.stop(0)
         }
