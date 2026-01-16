@@ -5,6 +5,7 @@ import assertk.assertThat
 import assertk.assertions.isGreaterThan
 import assertk.assertions.isInstanceOf
 import assertk.assertions.messageContains
+import com.sun.net.httpserver.HttpServer
 import net.postchain.common.exception.ProgrammerMistake
 import net.postchain.common.exception.UserMistake
 import net.postchain.gtv.mapper.GtvObjectMapper
@@ -15,6 +16,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import uk.org.webcompere.systemstubs.environment.EnvironmentVariables
+import java.net.InetSocketAddress
 import java.util.concurrent.Callable
 
 class AiInferenceIT : AiInferenceBaseTest() {
@@ -168,5 +170,33 @@ class AiInferenceIT : AiInferenceBaseTest() {
         assertFailure {
             engine.compute(input)
         }.isInstanceOf(ProgrammerMistake::class.java).messageContains("Failed to generate text: Not Found")
+    }
+
+    @Test
+    fun retries() {
+        withFailingHttpServer { url ->
+            val engine = EnvironmentVariables(AiInferenceNodeConfig.URL, url).execute(Callable {
+                createEngine()
+            })
+            val input = GtvObjectMapper.toGtvDictionary(Request("What is the capital of France?", messages = null, stop = "."))
+            assertFailure {
+                engine.compute(input)
+            }.isInstanceOf(ProgrammerMistake::class.java).messageContains("the_error")
+        }
+    }
+
+    private fun withFailingHttpServer(block: (url: String) -> Unit) {
+        val server = HttpServer.create(InetSocketAddress(0), 0)
+        server.createContext("/") { exchange ->
+            val response = "{\"error\": {\"message\": \"the_error\"}}".toByteArray()
+            exchange.sendResponseHeaders(500, response.size.toLong())
+            exchange.responseBody.use { it.write(response) }
+        }
+        server.start()
+        try {
+            block("http://localhost:${server.address.port}")
+        } finally {
+            server.stop(0)
+        }
     }
 }

@@ -22,7 +22,11 @@ class TimeoutIT : AiInferenceBaseTest() {
     @Test
     @Timeout(15, unit = TimeUnit.SECONDS)
     fun `connect timeout`() {
-        val engine = EnvironmentVariables(AiInferenceNodeConfig.URL, unroutableInternetUrl).execute(Callable {
+        val engine = EnvironmentVariables(
+                AiInferenceNodeConfig.URL, unroutableInternetUrl,
+                AiInferenceNodeConfig.RETRY_COUNT, "1",
+                AiInferenceNodeConfig.RETRY_DELAY_MILLIS, "0",
+        ).execute(Callable {
             createEngine(timeout = 5L)
         })
         assertFailure {
@@ -34,7 +38,11 @@ class TimeoutIT : AiInferenceBaseTest() {
     @Timeout(10, unit = TimeUnit.SECONDS)
     fun `request timeout compute`() {
         withRequestTimeoutServer { url ->
-            val engine = EnvironmentVariables(AiInferenceNodeConfig.URL, url).execute(Callable {
+            val engine = EnvironmentVariables(
+                    AiInferenceNodeConfig.URL, url,
+                    AiInferenceNodeConfig.RETRY_COUNT, "1",
+                    AiInferenceNodeConfig.RETRY_DELAY_MILLIS, "0",
+            ).execute(Callable {
                 createEngine(timeout = 5L)
             })
             assertFailure {
@@ -47,7 +55,11 @@ class TimeoutIT : AiInferenceBaseTest() {
     @Timeout(10, unit = TimeUnit.SECONDS)
     fun `request timeout validate`() {
         withRequestTimeoutServer { url ->
-            val engine = EnvironmentVariables(AiInferenceNodeConfig.URL, url).execute(Callable {
+            val engine = EnvironmentVariables(
+                    AiInferenceNodeConfig.URL, url,
+                    AiInferenceNodeConfig.RETRY_COUNT, "1",
+                    AiInferenceNodeConfig.RETRY_DELAY_MILLIS, "0",
+            ).execute(Callable {
                 createEngine(timeout = 5L)
             })
             assertFailure {
