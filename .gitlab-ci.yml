@@ -54,6 +54,7 @@ build:
   script:
     - mvn
       $MAVEN_CLI_OPTS
+      --activate-profiles ci
       verify
 
 deploy-snapshot:
@@ -70,7 +71,7 @@ deploy-snapshot:
       $MAVEN_CLI_OPTS
       -Drevision=$SNAPSHOT_VERSION
       -DskipTests
-      --activate-profiles docker-push
+      --activate-profiles ci,docker-push
       clean source:jar deploy
 
 # Triggered by that a semver tag was pushed
@@ -86,7 +87,7 @@ deploy:
       -Dimage.latest_tag=latest
       -Djib.to.tags=$CI_COMMIT_TAG
       -DskipTests
-      --activate-profiles docker-push
+      --activate-profiles ci,docker-push
       clean source:jar deploy
     - echo "JAR_EXTENSION_HASHES=$(sha256sum target/ai-inference-extension-*.jar | grep -v sources.jar | sed 's/target\///' | sed -E 's/\s+/:/g' | sed -z 's/\n/;/g')" > .jar_extension_hashes.env
   artifacts:
