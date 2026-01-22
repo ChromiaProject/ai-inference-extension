@@ -45,6 +45,11 @@ This extension requires the following node configuration:
 | `extension.ai_inference.basic_auth_user`     | User for HTTP basic auth                                     | string  |                    | no auth |
 | `extension.ai_inference.basic_auth_password` | Password for HTTP basic auth                                 | string  |                    | no auth |
 
-## Developer documentation
+## dApp developer documentation
 
 [Documentation for dApp developers](doc/User-Guide.md)
+
+## Developer documentation
+
+The base for the API this extension calls is [vLLM's OpenAI-Compatible API](https://docs.vllm.ai/en/latest/serving/openai_compatible_server/),
+but we use a [derivative version with verification support](https://github.com/killerstorm/vllm/blob/042ab5d27ad0db925eb9f05c59882842f8800b19/docs/verification_endpoints.md).
