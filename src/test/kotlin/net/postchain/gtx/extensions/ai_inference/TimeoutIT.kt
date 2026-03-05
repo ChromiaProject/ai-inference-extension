@@ -23,9 +23,9 @@ class TimeoutIT : AiInferenceBaseTest() {
     @Timeout(15, unit = TimeUnit.SECONDS)
     fun `connect timeout`() {
         val engine = EnvironmentVariables(
-                AiInferenceNodeConfig.URL, unroutableInternetUrl,
-                AiInferenceNodeConfig.RETRY_COUNT, "1",
-                AiInferenceNodeConfig.RETRY_DELAY_MILLIS, "0",
+                AiInferenceNodeConfig.CONFIG_ENV_PREFIX + AiInferenceNodeConfig.URL, unroutableInternetUrl,
+                AiInferenceNodeConfig.CONFIG_ENV_PREFIX + AiInferenceNodeConfig.RETRY_COUNT, "1",
+                AiInferenceNodeConfig.CONFIG_ENV_PREFIX + AiInferenceNodeConfig.RETRY_DELAY_MILLIS, "0",
         ).execute(Callable {
             createEngine(timeout = 5L)
         })
@@ -39,9 +39,9 @@ class TimeoutIT : AiInferenceBaseTest() {
     fun `request timeout compute`() {
         withRequestTimeoutServer { url ->
             val engine = EnvironmentVariables(
-                    AiInferenceNodeConfig.URL, url,
-                    AiInferenceNodeConfig.RETRY_COUNT, "1",
-                    AiInferenceNodeConfig.RETRY_DELAY_MILLIS, "0",
+                    AiInferenceNodeConfig.CONFIG_ENV_PREFIX + AiInferenceNodeConfig.URL, url,
+                    AiInferenceNodeConfig.CONFIG_ENV_PREFIX + AiInferenceNodeConfig.RETRY_COUNT, "1",
+                    AiInferenceNodeConfig.CONFIG_ENV_PREFIX + AiInferenceNodeConfig.RETRY_DELAY_MILLIS, "0",
             ).execute(Callable {
                 createEngine(timeout = 5L)
             })
@@ -56,9 +56,9 @@ class TimeoutIT : AiInferenceBaseTest() {
     fun `request timeout validate`() {
         withRequestTimeoutServer { url ->
             val engine = EnvironmentVariables(
-                    AiInferenceNodeConfig.URL, url,
-                    AiInferenceNodeConfig.RETRY_COUNT, "1",
-                    AiInferenceNodeConfig.RETRY_DELAY_MILLIS, "0",
+                    AiInferenceNodeConfig.CONFIG_ENV_PREFIX + AiInferenceNodeConfig.URL, url,
+                    AiInferenceNodeConfig.CONFIG_ENV_PREFIX + AiInferenceNodeConfig.RETRY_COUNT, "1",
+                    AiInferenceNodeConfig.CONFIG_ENV_PREFIX + AiInferenceNodeConfig.RETRY_DELAY_MILLIS, "0",
             ).execute(Callable {
                 createEngine(timeout = 5L)
             })

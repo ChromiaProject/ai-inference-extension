@@ -50,16 +50,19 @@ data class AiInferenceNodeConfig(
 ) {
     companion object {
         const val CONFIG_ENV_PREFIX = "POSTCHAIN_EXTENSION_AI_INFERENCE_"
-        const val URL = "${CONFIG_ENV_PREFIX}URL"
-        const val RETRY_COUNT = "${CONFIG_ENV_PREFIX}RETRY_COUNT"
-        const val RETRY_DELAY_MILLIS = "${CONFIG_ENV_PREFIX}RETRY_DELAY_MILLIS"
-        const val BASIC_AUTH_USER = "${CONFIG_ENV_PREFIX}BASIC_AUTH_USER"
-        const val BASIC_AUTH_PASSWORD = "${CONFIG_ENV_PREFIX}BASIC_AUTH_PASSWORD"
+        const val CONFIG_PROPERTY_PREFIX = "extension.ai_inference."
+        const val URL = "URL"
+        const val RETRY_COUNT = "RETRY_COUNT"
+        const val RETRY_DELAY_MILLIS = "RETRY_DELAY_MILLIS"
+        const val BASIC_AUTH_USER = "BASIC_AUTH_USER"
+        const val BASIC_AUTH_PASSWORD = "BASIC_AUTH_PASSWORD"
 
         @JvmStatic
-        fun fromAppConfig(config: AppConfig): AiInferenceNodeConfig {
-            val basicAuthUser = config.getEnvOrString(BASIC_AUTH_USER, "extension.ai_inference.basic_auth_user")
-            val basicAuthPassword = config.getEnvOrString(BASIC_AUTH_PASSWORD, "extension.ai_inference.basic_auth_password")
+        fun fromAppConfig(config: AppConfig, bcModel: String): AiInferenceNodeConfig {
+            val (envPrefix, propertyPrefix) = getConfigPrefixes(config, bcModel)
+
+            val basicAuthUser = config.getEnvOrString(envPrefix + BASIC_AUTH_USER, propertyPrefix + BASIC_AUTH_USER.lowercase())
+            val basicAuthPassword = config.getEnvOrString(envPrefix + BASIC_AUTH_PASSWORD, propertyPrefix + BASIC_AUTH_PASSWORD.lowercase())
             if (basicAuthUser != null && basicAuthPassword == null) {
                 throw UserMistake("If $BASIC_AUTH_USER is set, $BASIC_AUTH_PASSWORD must be set as well")
             }
@@ -67,14 +70,26 @@ data class AiInferenceNodeConfig(
                 throw UserMistake("If $BASIC_AUTH_PASSWORD is set, $BASIC_AUTH_USER must be set as well")
             }
             return AiInferenceNodeConfig(
-                    url = config.getEnvOrString(URL, "extension.ai_inference.url")
+                    url = config.getEnvOrString(envPrefix + URL, propertyPrefix + URL.lowercase())
                             ?: throw UserMistake("AI inference URL must be configured"),
-                    retryCount = config.getEnvOrInt(RETRY_COUNT, "extension.ai_inference.retry_count", 5),
-                    retryDelay = config.getEnvOrLong(RETRY_DELAY_MILLIS, "extension.ai_inference.retry_delay_millis", 1000).milliseconds,
+                    retryCount = config.getEnvOrInt(envPrefix + RETRY_COUNT, propertyPrefix + RETRY_COUNT.lowercase(), 5),
+                    retryDelay = config.getEnvOrLong(envPrefix + RETRY_DELAY_MILLIS, propertyPrefix + RETRY_DELAY_MILLIS.lowercase(), 1000).milliseconds,
                     basicAuth = if (basicAuthUser != null && basicAuthPassword != null)
                         Credentials(basicAuthUser, basicAuthPassword)
                     else null,
             )
+        }
+
+        private fun getConfigPrefixes(config: AppConfig, bcModel: String): Pair<String, String> {
+            val modelSpecificPropertyPrefix = "${CONFIG_PROPERTY_PREFIX}${bcModel}."
+            val modelSpecificEnvPrefix = "${CONFIG_ENV_PREFIX}${bcModel.uppercase()}_"
+
+            // Check if there is any model-specific config, otherwise fallback to the default config
+            return if (config.getEnvOrString(modelSpecificEnvPrefix + URL, modelSpecificPropertyPrefix + URL.lowercase()) != null) {
+                modelSpecificEnvPrefix to modelSpecificPropertyPrefix
+            } else {
+                CONFIG_ENV_PREFIX to CONFIG_PROPERTY_PREFIX
+            }
         }
     }
 }
@@ -120,7 +135,6 @@ class AiInferenceComputeEngine : HybridComputeEngine, PostchainContextAware, Shu
     }
 
     override fun initializeContext(configuration: BlockchainConfiguration, postchainContext: PostchainContext, ctx: EContext) {
-        nodeConfig = AiInferenceNodeConfig.fromAppConfig(postchainContext.appConfig)
         config = configuration.rawConfig.asDict()[NAME]?.toObject<AiInferenceConfig>()
                 ?: throw UserMistake("$NAME configuration not found")
         if (config.model.isBlank()) {
@@ -132,6 +146,7 @@ class AiInferenceComputeEngine : HybridComputeEngine, PostchainContextAware, Shu
         if (config.verificationTimeoutSeconds < 1 || config.verificationTimeoutSeconds > Integer.MAX_VALUE) {
             throw UserMistake("$NAME configuration invalid: verification_timeout_seconds must be between 1 and ${Integer.MAX_VALUE}")
         }
+        nodeConfig = AiInferenceNodeConfig.fromAppConfig(postchainContext.appConfig, config.model)
 
         // Configurable retires for inference
         val (inferenceClient, inferenceCloseable) = createClientWithTimeout(Timeout.ofSeconds(config.inferenceTimeoutSeconds))

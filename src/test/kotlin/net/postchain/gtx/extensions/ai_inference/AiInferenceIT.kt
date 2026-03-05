@@ -150,7 +150,7 @@ class AiInferenceIT : AiInferenceBaseTest() {
         val input = GtvObjectMapper.toGtvDictionary(Request("What is the capital of France?", messages = null, stop = "."))
         assertFailure {
             engine.compute(input)
-        }.isInstanceOf(UserMistake::class.java).messageContains("is too large: 10000. This model's maximum context length is 2048 tokens")
+        }.isInstanceOf(UserMistake::class.java).messageContains("is too large: 10000. This model's maximum context length is 4068 tokens")
     }
 
     @Test
@@ -159,12 +159,12 @@ class AiInferenceIT : AiInferenceBaseTest() {
         val input = GtvObjectMapper.toGtvDictionary(Request("What is the capital of France? ".repeat(1000), messages = null, stop = null))
         assertFailure {
             engine.compute(input)
-        }.isInstanceOf(UserMistake::class.java).messageContains("This model's maximum context length is 2048 tokens. However, your request has")
+        }.isInstanceOf(UserMistake::class.java).messageContains("This model's maximum context length is 4068 tokens. However, your request has")
     }
 
     @Test
     fun `auth error`() {
-        val engine = EnvironmentVariables(AiInferenceNodeConfig.BASIC_AUTH_PASSWORD, "wrong_password").execute(Callable {
+        val engine = EnvironmentVariables(AiInferenceNodeConfig.CONFIG_ENV_PREFIX + AiInferenceNodeConfig.BASIC_AUTH_PASSWORD, "wrong_password").execute(Callable {
             createEngine()
         })
         val input = GtvObjectMapper.toGtvDictionary(Request("What is the capital of France?", messages = null, stop = "."))
@@ -175,8 +175,8 @@ class AiInferenceIT : AiInferenceBaseTest() {
 
     @Test
     fun `wrong URL`() {
-        val actualUrl = System.getenv(AiInferenceNodeConfig.URL)
-        val engine = EnvironmentVariables(AiInferenceNodeConfig.URL, "$actualUrl/bogus").execute(Callable {
+        val actualUrl = System.getenv(AiInferenceNodeConfig.CONFIG_ENV_PREFIX + AiInferenceNodeConfig.URL)
+        val engine = EnvironmentVariables(AiInferenceNodeConfig.CONFIG_ENV_PREFIX + AiInferenceNodeConfig.URL, "$actualUrl/bogus").execute(Callable {
             createEngine()
         })
         val input = GtvObjectMapper.toGtvDictionary(Request("What is the capital of France?", messages = null, stop = "."))
@@ -198,7 +198,7 @@ class AiInferenceIT : AiInferenceBaseTest() {
         }
         server.start()
         try {
-            val engine = EnvironmentVariables(AiInferenceNodeConfig.URL, "http://localhost:${server.address.port}").execute(Callable {
+            val engine = EnvironmentVariables(AiInferenceNodeConfig.CONFIG_ENV_PREFIX + AiInferenceNodeConfig.URL, "http://localhost:${server.address.port}").execute(Callable {
                 createEngine()
             })
             val input = GtvObjectMapper.toGtvDictionary(Request("What is the capital of France?", messages = null, stop = "."))
