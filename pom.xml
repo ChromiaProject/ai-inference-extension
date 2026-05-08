@@ -28,7 +28,7 @@
         <postchain.version>3.49.11</postchain.version>
         <postchain.chromia.version>3.39.7</postchain.chromia.version>
 
-        <rell.maven.plugin.version>0.16.5</rell.maven.plugin.version>
+        <rell.maven.plugin.version>1.2.3</rell.maven.plugin.version>
 
         <junit.version>5.9.1</junit.version>
 
