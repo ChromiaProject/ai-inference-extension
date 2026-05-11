@@ -150,7 +150,7 @@ class AiInferenceIT : AiInferenceBaseTest() {
         val input = GtvObjectMapper.toGtvDictionary(Request("What is the capital of France?", messages = null, stop = "."))
         assertFailure {
             engine.compute(input)
-        }.isInstanceOf(UserMistake::class.java).messageContains("is too large: 10000. This model's maximum context length is 4068 tokens")
+        }.isInstanceOf(UserMistake::class.java).messageContains("is too large: 10000. This model's maximum context length is 1028 tokens")
     }
 
     @Test
@@ -159,7 +159,7 @@ class AiInferenceIT : AiInferenceBaseTest() {
         val input = GtvObjectMapper.toGtvDictionary(Request("What is the capital of France? ".repeat(1000), messages = null, stop = null))
         assertFailure {
             engine.compute(input)
-        }.isInstanceOf(UserMistake::class.java).messageContains("This model's maximum context length is 4068 tokens. However, your request has")
+        }.isInstanceOf(UserMistake::class.java).messageContains("This model's maximum context length is 1028 tokens. However, your request has")
     }
 
     @Test
