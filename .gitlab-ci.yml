@@ -127,10 +127,10 @@ gitlab-release:
 
 container-scanning:
   variables:
-    REGISTRY: registry.gitlab.com/chromaway/core/ai-inference-extension-chromia-subnode
+    REGISTRY: registry.gitlab.com/chromaway/core/ai-inference-extension
   parallel:
     matrix:
-      - IMAGE: [ ai-inference-extension-chromia-subnode ]
+      - IMAGE: [ chromaway/ai-inference-extension-chromia-subnode ]
         VERSION: [ LATEST, LATEST_SNAPSHOT ]
   only:
     variables:
