@@ -24,6 +24,10 @@ import java.net.InetSocketAddress
 import java.util.concurrent.Callable
 import java.util.concurrent.TimeUnit
 
+// These tests call a live vLLM inference service (vllm2) at POSTCHAIN_EXTENSION_AI_INFERENCE_URL.
+// The service is currently not reachable from CI (connect timeouts), so the suite is disabled
+// until DevOps makes it available again. Remove @Disabled once the service is back.
+@Disabled("Requires the vllm2 inference service to be up and reachable from CI")
 class AiInferenceIT : AiInferenceBaseTest() {
 
     @Test
