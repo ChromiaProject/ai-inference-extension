@@ -25,8 +25,8 @@
         <kotlin.compiler.jvmTarget>21</kotlin.compiler.jvmTarget>
         <kotlin.code.style>obsolete</kotlin.code.style> <!-- Kotlin obsolete IntelliJ IDEA codestyle -->
 
-        <postchain.version>3.49.22</postchain.version>
-        <postchain.chromia.version>3.40.1</postchain.chromia.version>
+        <postchain.version>3.49.23</postchain.version>
+        <postchain.chromia.version>3.40.2</postchain.chromia.version>
 
         <rell.maven.plugin.version>1.2.3</rell.maven.plugin.version>
 
@@ -47,7 +47,7 @@
             <dependency>
                 <groupId>org.ow2.asm</groupId>
                 <artifactId>asm-bom</artifactId>
-                <version>9.11</version>
+                <version>9.11.1</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -282,7 +282,7 @@
                 <configuration>
                     <allowInsecureRegistries>false</allowInsecureRegistries>
                     <from>
-                        <image>registry.gitlab.com/chromaway/postchain-chromia/chromaway/chromia-subnode:3.40.1@sha256:49abdc4971f2a2eeca743ed8c61f128a769c1e336b8963f8e24e207f15331d0a</image>
+                        <image>registry.gitlab.com/chromaway/postchain-chromia/chromaway/chromia-subnode:3.40.2@sha256:67c7e3a64be2c76b294b26d7963d4458124e83d44dd67ef76bbe7ac96a648b10</image>
                     </from>
                     <to>
                         <image>${image.name}</image>
