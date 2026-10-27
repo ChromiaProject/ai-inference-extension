@@ -101,6 +101,8 @@ deploy:
 
 deploy_library_chain:
   extends: .deploy_library_chain
+  # The template's chr does not support rellVersion 0.15.4
+  image: registry.gitlab.com/chromaway/core-tools/chromia-cli/chr:0.34.3@sha256:ce8b0867d2db5d86fa6f4dcdc25f0af9d5df877dcb51ecc25135e811a8c225d9
   script:
     - cd rell
     - chr install
